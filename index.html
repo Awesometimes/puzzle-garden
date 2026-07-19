@@ -15,6 +15,7 @@
 
 :root {
   color-scheme: light dark;
+  --text-scale: 1;
 
   /* ground + ink */
   --paper: #FBF5E9;
@@ -43,8 +44,9 @@
 
   --glow: #FFF3C9; /* highlight for lit / active tiles */
 
-  --font: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
-          "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --font: ui-rounded, "SF Pro Rounded", "Avenir Next Rounded", "Nunito",
+          "Arial Rounded MT Bold", "Trebuchet MS", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --radius-lg: 28px;
   --radius-md: 18px;
 }
@@ -86,8 +88,10 @@
 
 /* rounded CJK faces when the app is in Chinese */
 :root[lang="zh-Hans"] {
-  --font: ui-rounded, "SF Pro Rounded", "Yuanti SC", "PingFang SC",
-          "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font: ui-rounded, "Yuanti SC", "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC",
+          "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          system-ui, sans-serif;
 }
 /* touch-action: manipulation kills iOS double-tap-to-zoom everywhere while
    keeping pinch-zoom + scroll; drag/swipe boards override to `none` (higher
@@ -95,7 +99,14 @@
 * { box-sizing: border-box; touch-action: manipulation; }
 
 html {
-  font-size: 20px; /* deliberately large base; user toggle scales it */
+  /* Keep the deliberately large 20px base. The user control changes the
+     custom property instead of replacing this declaration with the browser's
+     much smaller `100%` default. */
+  font-size: calc(20px * var(--text-scale));
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
   /* stop the browser's swipe-to-navigate and pull-to-refresh, so a swipe
      over the board stays in the game instead of leaving the page */
   overscroll-behavior: none;
@@ -130,6 +141,8 @@ button {
   font-family: inherit;
   color: inherit;
 }
+
+.screen-title:focus { outline: none; }
 
 :focus-visible {
   outline: 3px solid var(--sky-deep);
@@ -191,7 +204,36 @@ button {
   margin-top: 12px;
   flex-wrap: wrap;
 }
-.toggles .pg-btn { min-height: 48px; font-size: 0.8rem; padding: 6px 18px; }
+.toggles .pg-btn { min-height: 52px; font-size: 0.8rem; padding: 6px 18px; }
+
+.continue-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 16px 20px;
+  text-align: left;
+  border: 2px solid var(--leaf-deep);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--leaf) 28%, var(--card));
+  color: var(--ink);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--leaf-deep) 45%, var(--line));
+  cursor: pointer;
+}
+.continue-card:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--line); }
+.continue-card .eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--leaf-deep);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.continue-card .continue-title { display: block; font-size: 1.05rem; font-weight: 800; }
+.continue-card .continue-meta { display: block; margin-top: 2px; color: var(--soft); font-size: 0.82rem; }
+.continue-card .chev { color: var(--leaf-deep); font-size: 1.5rem; font-weight: 800; }
 
 .cards { display: grid; gap: 16px; }
 
@@ -225,24 +267,26 @@ button {
 .game-card h2 { font-size: 1.15rem; }
 .game-card .tagline { margin: 3px 0 0; color: var(--soft); font-size: 0.85rem; line-height: 1.35; }
 .game-card .prog {
+  margin-top: 7px;
   font-size: 0.8rem;
   color: var(--soft);
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .game-card .chev { font-size: 1.3rem; color: var(--soft); }
 
 /* ---------- level select ---------- */
 .screen-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
   align-items: center;
   gap: 12px;
   padding: 4px 0 14px;
 }
+.screen-head .back-btn { max-width: 34vw; padding-inline: 18px; }
 .screen-head .title { flex: 1; text-align: center; }
 .screen-head .title h2 { font-size: 1.3rem; }
 .screen-head .title .meta { color: var(--soft); font-size: 0.8rem; margin: 2px 0 0; }
-.screen-head .spacer { width: 92px; }
+.screen-head .spacer { width: clamp(64px, 18vw, 92px); }
 
 .howto {
   margin: 0 auto 16px;
@@ -284,7 +328,7 @@ button {
   background: color-mix(in srgb, var(--butter) 26%, var(--card));
 }
 .lvl-btn .mark { font-size: 1.5rem; line-height: 1; }
-.lvl-btn .num { font-size: 0.75rem; color: var(--soft); }
+.lvl-btn .num { font-size: 0.8rem; color: var(--soft); }
 
 /* ---------- play screen ---------- */
 .mascot-row {
@@ -422,8 +466,19 @@ button {
 }
 
 @media (max-width: 420px) {
-  html { font-size: 18px; }
-  .game-card .prog { display: none; }
+  #app { padding-inline: 10px; }
+  .home-head { padding-top: 4px; }
+  .home-head .mascot { width: 92px; }
+  .toggles { gap: 8px; }
+  .toggles .pg-btn { min-height: 52px; padding-inline: 14px; }
+  .game-card { gap: 12px; padding: 16px; }
+  .game-card .badge { width: 60px; height: 60px; border-radius: 19px; }
+  .screen-head { gap: 8px; }
+  .screen-head .back-btn { min-height: 52px; max-width: 31vw; padding-inline: 12px; font-size: 0.82rem; }
+  .screen-head .spacer { width: 31vw; max-width: 76px; }
+  .lvl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .mascot-row { align-items: flex-start; }
+  .bubble { padding: 10px 13px; }
 }
 
 </style>
@@ -442,6 +497,10 @@ window.I18N = {
     'ui.soundOn': '🔔 Sound on',
     'ui.soundOff': '🔕 Sound off',
     'ui.textSize': 'Aa Text size',
+    'ui.textStandard': 'Aa Standard',
+    'ui.textLarge': 'Aa Larger',
+    'ui.textLargest': 'Aa Largest',
+    'ui.puzzleActions': 'Puzzle actions',
     'ui.night': '🌙 Night',
     'ui.day': '☀️ Light',
     'ui.lang': '🌐 中文',
@@ -452,6 +511,9 @@ window.I18N = {
     'home.new': 'New!',
     'home.prog': '{n} of {t} 🌼',
     'home.allDone': 'All done 🌼',
+    'home.continue': 'Continue',
+    'home.continueMeta': 'Puzzle {n} of {t}',
+    'home.continueAria': 'Continue {title}, puzzle {n} of {t}',
     'levels.meta': '{n} of {t} puzzles solved',
     'levels.puzzle': 'Puzzle {n}',
     'levels.next': 'Up next!',
@@ -477,6 +539,7 @@ window.I18N = {
     'flow.aria.rest': 'resting stone',
     'flow.aria.flower': '{icon} flower',
     'flow.aria.tile': 'garden tile',
+    'flow.aria.pos': ', row {r}, column {c}',
     'flow.hint.beside': 'Tap a tile right beside the glowing end of the path. ↩ Undo helps too!',
     'flow.hint.longer': 'So close! Every tile wants a visit — try a longer path. 🌱',
     'flow.hint.otherPair': 'Lovely! Now the other pair — and visit every tile. 🌼',
@@ -498,6 +561,8 @@ window.I18N = {
     'steps.msg.thereShe': 'There she is! Now tap a stone right beside her. 🐾',
     'steps.msg.adjacent': 'Try a stone that touches the kitty’s stone, side by side. 🐾',
     'steps.msg.anyStone': 'Tap any stone — the kitty will hop right on! 🐱',
+    'steps.msg.undoEmpty': 'We are already at the beginning. 🌱',
+    'steps.msg.fresh': 'Back to the same beginning — take your time. 🌿',
     'steps.msg.ownSpot': 'This time the kitty picked her own spot. Walk from there! 🐾',
     'steps.msg.arrowIntro': 'Arrow stones can be crossed any way — but they only LIGHT when you hop on along the arrow. → means come from its left!',
     'steps.msg.arrowMiss': 'No glow that time — to light it, hop on the way the arrow points. ➡️',
@@ -511,7 +576,7 @@ window.I18N = {
     'pipes.tagline': 'Light every little lantern',
     'pipes.howTo': 'Tap two slabs to trade places — or drag a slab onto another — and lead the golden line to every lantern.',
     'pipes.moss': ['That mossy slab is stuck tight!', 'The moss holds that one snug in place. 🌿'],
-    'pipes.restart': ['A fresh shuffle — take all the time you like. 🌸', 'Same puzzle, freshly mixed. You know it better now!'],
+    'pipes.restart': ['Back to the same starting layout — take your time. 🌸', 'Same starting layout; you know it better now!'],
     'pipes.msg.allLit': 'Every lantern glows! Now help the last slabs join the golden line. ✨',
     'pipes.msg.close': 'Ooh, so close! The last lanterns can hardly wait. ✨',
     'pipes.msg.stuck': 'No hurry at all. Watch where the golden glow stops — a swap right there helps. 🌿',
@@ -536,6 +601,12 @@ window.I18N = {
     'crates.aria.right': 'Move right',
     'crates.aria.crate': 'crate',
     'crates.aria.cat': 'cat',
+    'crates.aria.board': 'Cozy Crates board',
+    'crates.aria.cell': 'Row {r}, column {c}: {item}',
+    'crates.aria.floor': 'empty floor',
+    'crates.aria.spot': 'flower spot',
+    'crates.aria.catOnSpot': 'cat standing on a flower spot',
+    'crates.aria.crateOnSpot': 'crate on a flower spot',
     'crates.msg.stuck': 'Stuck? ↩ Undo takes one step back. There is no rush at all. 🍃',
     'crates.msg.oneLeft': 'Lovely! Just one crate to go. 🌼',
     'crates.msg.corner': 'That crate is tucked in a corner. ↩ Undo can fetch it back. 🌿',
@@ -551,6 +622,10 @@ window.I18N = {
     'ui.soundOn': '🔔 声音开',
     'ui.soundOff': '🔕 声音关',
     'ui.textSize': 'Aa 字体大小',
+    'ui.textStandard': 'Aa 标准字',
+    'ui.textLarge': 'Aa 大字',
+    'ui.textLargest': 'Aa 最大字',
+    'ui.puzzleActions': '谜题操作',
     'ui.night': '🌙 夜间',
     'ui.day': '☀️ 白天',
     'ui.lang': '🌐 English',
@@ -561,6 +636,9 @@ window.I18N = {
     'home.new': '新的！',
     'home.prog': '已完成 {n}/{t} 🌼',
     'home.allDone': '全部完成 🌼',
+    'home.continue': '继续上次',
+    'home.continueMeta': '第 {n} 关 · 共 {t} 关',
+    'home.continueAria': '继续《{title}》第 {n} 关，共 {t} 关',
     'levels.meta': '已完成 {n}/{t} 关',
     'levels.puzzle': '第 {n} 关',
     'levels.next': '就玩这关！',
@@ -586,6 +664,7 @@ window.I18N = {
     'flow.aria.rest': '休息的石头',
     'flow.aria.flower': '{icon} 花',
     'flow.aria.tile': '花园格子',
+    'flow.aria.pos': '，第 {r} 行第 {c} 列',
     'flow.hint.beside': '点路径亮亮的一端旁边的格子。↩ 后退一步也很好用！',
     'flow.hint.longer': '就差一点！每个格子都想被走到——试试绕远一点的路。🌱',
     'flow.hint.otherPair': '真棒！再连另一对——记得每格都要走到。🌼',
@@ -607,6 +686,8 @@ window.I18N = {
     'steps.msg.thereShe': '小猫就位啦！点它旁边的石头吧。🐾',
     'steps.msg.adjacent': '要点和小猫挨着的石头哦。🐾',
     'steps.msg.anyStone': '点任意一块石头，小猫就跳上去！🐱',
+    'steps.msg.undoEmpty': '已经回到最开始啦。🌱',
+    'steps.msg.fresh': '回到同一个起点，慢慢来。🌿',
     'steps.msg.ownSpot': '这次小猫自己选了位置，从那里出发吧！🐾',
     'steps.msg.arrowIntro': '箭头石头随便怎么走都可以——但要顺着箭头的方向跳上去才会亮。→ 就是要从它左边跳过来！',
     'steps.msg.arrowMiss': '这次没有亮——要顺着箭头的方向跳上去，它才会亮哦。➡️',
@@ -620,7 +701,7 @@ window.I18N = {
     'pipes.tagline': '点亮每一盏小灯笼',
     'pipes.howTo': '点两块石板让它们交换位置，也可以直接拖动——让金色的线连到每盏灯笼。',
     'pipes.moss': ['长了苔藓的石板牢牢固定住啦！', '苔藓把它抱得紧紧的。🌿'],
-    'pipes.restart': ['重新打乱了——慢慢来。🌸', '还是这一关，重新洗过，你现在更熟悉它啦！'],
+    'pipes.restart': ['回到刚才同一个开局——慢慢来。🌸', '还是同一个开局，你已经更熟悉它啦！'],
     'pipes.msg.allLit': '每盏灯笼都亮了！再帮最后几块石板连进金线里。✨',
     'pipes.msg.close': '就差一点点！灯笼们都等不及了。✨',
     'pipes.msg.stuck': '不着急。看看金光停在哪里——在那里换一换就好。🌿',
@@ -645,6 +726,12 @@ window.I18N = {
     'crates.aria.right': '向右走',
     'crates.aria.crate': '箱子',
     'crates.aria.cat': '小猫',
+    'crates.aria.board': '推箱子棋盘',
+    'crates.aria.cell': '第 {r} 行第 {c} 列：{item}',
+    'crates.aria.floor': '空地',
+    'crates.aria.spot': '小花位置',
+    'crates.aria.catOnSpot': '站在小花位置上的小猫',
+    'crates.aria.crateOnSpot': '在小花位置上的箱子',
     'crates.msg.stuck': '卡住了吗？↩ 后退一步就好，一点也不用急。🍃',
     'crates.msg.oneLeft': '真棒！只剩一个箱子啦。🌼',
     'crates.msg.corner': '箱子躲进角落啦。↩ 后退一步能把它救回来。🌿',
@@ -673,7 +760,7 @@ window.App = (function () {
   try { store = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { store = {}; }
   if (!store.done) store.done = {};
   if (typeof store.sound !== 'boolean') store.sound = true;
-  if (typeof store.scale !== 'number') store.scale = 0;
+  if (!Number.isInteger(store.scale) || store.scale < 0 || store.scale > 2) store.scale = 0;
   if (store.theme !== 'light' && store.theme !== 'dark') store.theme = null;
 
   function save() {
@@ -761,6 +848,7 @@ window.App = (function () {
   /* ---------- tiny DOM helpers ---------- */
   function el(tag, cls, text) {
     const n = document.createElement(tag);
+    if (tag === 'button') n.type = 'button';
     if (cls) n.className = cls;
     if (text !== undefined && text !== null) n.textContent = text;
     return n;
@@ -773,6 +861,7 @@ window.App = (function () {
 
   /* ---------- screen management ---------- */
   let cleanupFn = null;
+  let hasRendered = false;
   function swap(build) {
     if (cleanupFn) { try { cleanupFn(); } catch (e) { /* ignore */ } cleanupFn = null; }
     const overlay = document.querySelector('.win-overlay');
@@ -781,6 +870,14 @@ window.App = (function () {
     root.innerHTML = '';
     root.appendChild(build());
     window.scrollTo(0, 0);
+    const heading = root.querySelector('.screen-title');
+    if (heading) {
+      heading.setAttribute('tabindex', '-1');
+      if (hasRendered) {
+        try { heading.focus({ preventScroll: true }); } catch (e) { heading.focus(); }
+      }
+    }
+    hasRendered = true;
   }
 
   function doneCount(g) {
@@ -790,30 +887,56 @@ window.App = (function () {
     return n;
   }
 
+  function firstUndone(g, start) {
+    const done = store.done[g.id] || {};
+    const from = Number.isInteger(start) ? start : 0;
+    for (let i = from; i < g.levels.length; i++) if (!done[i]) return i;
+    for (let i = 0; i < from; i++) if (!done[i]) return i;
+    return -1;
+  }
+
+  function resumeTarget() {
+    if (!store.lastGame) return null;
+    const g = games.find(function (item) { return item.id === store.lastGame; });
+    if (!g) return null;
+    const i = firstUndone(g, store.lastLevel);
+    return i >= 0 ? { game: g, level: i } : null;
+  }
+
+  function rememberPlay(g, i) {
+    store.lastGame = g.id;
+    store.lastLevel = i;
+    save();
+  }
+
   /* ---------- home ---------- */
   function home() {
+    document.title = t('app.title');
     swap(function () {
       const frag = document.createDocumentFragment();
 
       const head = el('div', 'home-head pg-pop');
       head.appendChild(mascot());
-      head.appendChild(el('h1', null, t('app.title')));
+      head.appendChild(el('h1', 'screen-title', t('app.title')));
       const sub = el('p', 'sub', t('app.sub'));
       head.appendChild(sub);
 
       const toggles = el('div', 'toggles');
       const sndBtn = el('button', 'pg-btn', store.sound ? t('ui.soundOn') : t('ui.soundOff'));
+      sndBtn.setAttribute('aria-pressed', store.sound ? 'true' : 'false');
       sndBtn.addEventListener('click', function () {
         store.sound = !store.sound;
         save();
         sndBtn.textContent = store.sound ? t('ui.soundOn') : t('ui.soundOff');
+        sndBtn.setAttribute('aria-pressed', store.sound ? 'true' : 'false');
         if (store.sound) sound.place();
       });
-      const sizeBtn = el('button', 'pg-btn', t('ui.textSize'));
+      const sizeBtn = el('button', 'pg-btn', textSizeLabel());
       sizeBtn.addEventListener('click', function () {
         store.scale = (store.scale + 1) % 3;
         save();
         applyScale();
+        sizeBtn.textContent = textSizeLabel();
         sound.tap();
       });
       const themeBtn = el('button', 'pg-btn', themeLabel());
@@ -840,20 +963,46 @@ window.App = (function () {
       head.appendChild(toggles);
       frag.appendChild(head);
 
+      const resume = resumeTarget();
+      if (resume) {
+        const g = resume.game;
+        const i = resume.level;
+        const continueBtn = el('button', 'continue-card');
+        continueBtn.setAttribute('aria-label', t('home.continueAria', {
+          title: g.title, n: i + 1, t: g.levels.length
+        }));
+        const continueText = el('span');
+        continueText.appendChild(el('span', 'eyebrow', t('home.continue')));
+        continueText.appendChild(el('span', 'continue-title', g.emoji + ' ' + g.title));
+        continueText.appendChild(el('span', 'continue-meta', t('home.continueMeta', {
+          n: i + 1, t: g.levels.length
+        })));
+        const continueChev = el('span', 'chev', '›');
+        continueChev.setAttribute('aria-hidden', 'true');
+        continueBtn.appendChild(continueText);
+        continueBtn.appendChild(continueChev);
+        continueBtn.addEventListener('click', function () { sound.tap(); play(g, i); });
+        frag.appendChild(continueBtn);
+      }
+
       const cards = el('div', 'cards');
       games.forEach(function (g) {
         const c = el('button', 'game-card');
-        c.setAttribute('aria-label', g.title + ' — ' + g.tagline);
         c.style.setProperty('--accent', g.accent);
         const badge = el('div', 'badge', g.emoji);
         const mid = el('div');
         mid.appendChild(el('h2', null, g.title));
         mid.appendChild(el('p', 'tagline', g.tagline));
         const n = doneCount(g);
-        const prog = el('div', 'prog', n === 0 ? t('home.new') : (n === g.levels.length ? t('home.allDone') : t('home.prog', { n: n, t: g.levels.length })));
+        const progressText = n === 0 ? t('home.new') : (n === g.levels.length ? t('home.allDone') : t('home.prog', { n: n, t: g.levels.length }));
+        const prog = el('div', 'prog', progressText);
+        mid.appendChild(prog);
+        const chev = el('span', 'chev', '›');
+        chev.setAttribute('aria-hidden', 'true');
+        c.setAttribute('aria-label', g.title + ' — ' + g.tagline + ' — ' + progressText);
         c.appendChild(badge);
         c.appendChild(mid);
-        c.appendChild(prog);
+        c.appendChild(chev);
         c.addEventListener('click', function () { sound.tap(); levels(g); });
         cards.appendChild(c);
       });
@@ -864,14 +1013,15 @@ window.App = (function () {
 
   /* ---------- level select ---------- */
   function levels(g) {
+    document.title = g.title + ' — ' + t('app.title');
     swap(function () {
       const frag = document.createDocumentFragment();
 
       const head = el('div', 'screen-head');
-      const back = el('button', 'pg-btn', t('nav.home'));
+      const back = el('button', 'pg-btn back-btn', t('nav.home'));
       back.addEventListener('click', function () { sound.tap(); home(); });
       const title = el('div', 'title');
-      title.appendChild(el('h2', null, g.emoji + ' ' + g.title));
+      title.appendChild(el('h2', 'screen-title', g.emoji + ' ' + g.title));
       title.appendChild(el('p', 'meta', t('levels.meta', { n: doneCount(g), t: g.levels.length })));
       head.appendChild(back);
       head.appendChild(title);
@@ -904,15 +1054,17 @@ window.App = (function () {
 
   /* ---------- play ---------- */
   function play(g, i) {
+    rememberPlay(g, i);
+    document.title = g.title + ' · ' + t('levels.puzzle', { n: i + 1 }) + ' — ' + t('app.title');
     swap(function () {
       const frag = document.createDocumentFragment();
       let won = false;
 
       const head = el('div', 'screen-head');
-      const back = el('button', 'pg-btn', t('nav.puzzles'));
+      const back = el('button', 'pg-btn back-btn', t('nav.puzzles'));
       back.addEventListener('click', function () { sound.tap(); levels(g); });
       const title = el('div', 'title');
-      title.appendChild(el('h2', null, g.title));
+      title.appendChild(el('h2', 'screen-title', g.title));
       title.appendChild(el('p', 'meta', t('play.meta', { n: i + 1, t: g.levels.length })));
       head.appendChild(back);
       head.appendChild(title);
@@ -922,19 +1074,27 @@ window.App = (function () {
       const mrow = el('div', 'mascot-row');
       mrow.appendChild(mascot());
       const bubble = el('div', 'bubble', pick(t('cheer.start')));
+      bubble.setAttribute('role', 'status');
+      bubble.setAttribute('aria-live', 'polite');
+      bubble.setAttribute('aria-atomic', 'true');
       mrow.appendChild(bubble);
       frag.appendChild(mrow);
 
-      frag.appendChild(el('p', 'howto', g.howTo));
+      const howto = el('p', 'howto', g.howTo);
+      howto.id = 'game-howto';
+      frag.appendChild(howto);
 
       const boardCard = el('div', 'board-card pg-pop');
       const board = el('div');
       board.id = 'board';
+      board.setAttribute('aria-describedby', 'game-howto');
       boardCard.appendChild(board);
       frag.appendChild(boardCard);
 
       const toolbar = el('div');
       toolbar.id = 'toolbar';
+      toolbar.setAttribute('role', 'toolbar');
+      toolbar.setAttribute('aria-label', t('ui.puzzleActions'));
       frag.appendChild(toolbar);
 
       const api = {
@@ -953,6 +1113,14 @@ window.App = (function () {
           won = true;
           if (!store.done[g.id]) store.done[g.id] = {};
           store.done[g.id][i] = true;
+          const next = firstUndone(g, i + 1);
+          if (next >= 0) {
+            store.lastGame = g.id;
+            store.lastLevel = next;
+          } else {
+            delete store.lastGame;
+            delete store.lastLevel;
+          }
           save();
           sound.win();
           confetti();
@@ -987,9 +1155,14 @@ window.App = (function () {
     const old = document.querySelector('.win-overlay');
     if (old) old.remove();
     const overlay = el('div', 'win-overlay');
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'win-title');
     const card = el('div', 'win-card');
     card.appendChild(mascot());
-    card.appendChild(el('h2', null, pick(t('cheer.win'))));
+    const winTitle = el('h2', null, pick(t('cheer.win')));
+    winTitle.id = 'win-title';
+    card.appendChild(winTitle);
 
     const isLast = i + 1 >= g.levels.length;
     const allDone = doneCount(g) === g.levels.length;
@@ -1009,11 +1182,18 @@ window.App = (function () {
 
     overlay.appendChild(card);
     document.body.appendChild(overlay);
+    const firstButton = card.querySelector('.primary') || card.querySelector('button');
+    if (firstButton) firstButton.focus();
   }
 
   /* ---------- settings ---------- */
   function applyScale() {
-    document.documentElement.style.fontSize = ['100%', '112%', '126%'][store.scale] || '100%';
+    const values = ['1', '1.12', '1.26'];
+    document.documentElement.style.setProperty('--text-scale', values[store.scale] || values[0]);
+    document.documentElement.setAttribute('data-text-scale', String(store.scale));
+  }
+  function textSizeLabel() {
+    return [t('ui.textStandard'), t('ui.textLarge'), t('ui.textLargest')][store.scale] || t('ui.textStandard');
   }
   function currentThemeIsDark() {
     if (store.theme) return store.theme === 'dark';
@@ -1209,7 +1389,8 @@ window.App = (function () {
     '.fl-board{display:grid;gap:clamp(4px,1.5vw,10px);width:100%;margin:0 auto;touch-action:none;}' +
     '.fl-cell{position:relative;aspect-ratio:1;border-radius:22%;border:2px solid var(--line);' +
       'background:var(--card);display:grid;place-items:center;user-select:none;-webkit-user-select:none;' +
-      'cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;}' +
+      'padding:0;color:inherit;font:inherit;cursor:pointer;' +
+      'transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;}' +
     '.fl-cell.fl-end{background:color-mix(in srgb,var(--fl-fill) 18%,var(--card));' +
       'border-color:color-mix(in srgb,var(--fl-fill) 65%,var(--line));}' +
     '.fl-cell.fl-lit{background:color-mix(in srgb,var(--fl-fill) 26%,var(--card));' +
@@ -1350,7 +1531,9 @@ window.App = (function () {
         for (var y = 0; y < rows; y++) {
           for (var x = 0; x < cols; x++) {
             var k = x + ',' + y;
-            var c = mk('fl-cell');
+            var c = blocked[k] ? mk('fl-cell') : document.createElement('button');
+            c.className = 'fl-cell';
+            if (!blocked[k]) c.type = 'button';
             c.dataset.x = x;
             c.dataset.y = y;
             var entry = { el: c, way: null, flower: null, rock: false };
@@ -1361,7 +1544,8 @@ window.App = (function () {
               r.className = 'fl-flower fl-rockface';
               r.textContent = '🪨';
               c.appendChild(r);
-              c.setAttribute('aria-label', App.t('flow.aria.rest'));
+              c.setAttribute('aria-label', App.t('flow.aria.rest') +
+                App.t('flow.aria.pos', { r: y + 1, c: x + 1 }));
             } else {
               var way = mk('fl-way');
               c.appendChild(way);
@@ -1375,11 +1559,13 @@ window.App = (function () {
                 f.textContent = pairs[ep.p].icon;
                 c.appendChild(f);
                 entry.flower = f;
-                c.setAttribute('aria-label', App.t('flow.aria.flower', { icon: pairs[ep.p].icon }));
+                c.setAttribute('aria-label', App.t('flow.aria.flower', { icon: pairs[ep.p].icon }) +
+                  App.t('flow.aria.pos', { r: y + 1, c: x + 1 }));
               } else {
-                c.setAttribute('aria-label', App.t('flow.aria.tile'));
+                c.setAttribute('aria-label', App.t('flow.aria.tile') +
+                  App.t('flow.aria.pos', { r: y + 1, c: x + 1 }));
               }
-              c.setAttribute('role', 'button');
+              c.setAttribute('aria-pressed', 'false');
             }
             cells[k] = entry;
             wrap.appendChild(c);
@@ -1408,6 +1594,7 @@ window.App = (function () {
             if (own) cls += ' fl-lit';
             if ((own && own.p === active) || (ep && ep.p === active)) cls += ' fl-on';
             entry.el.className = cls;
+            entry.el.setAttribute('aria-pressed', own ? 'true' : 'false');
             var pi = own ? own.p : (ep ? ep.p : -1);
             if (pi >= 0) {
               entry.el.style.setProperty('--fl-fill', pairs[pi].fill);
@@ -1606,6 +1793,13 @@ window.App = (function () {
       function endDrag() { dragging = false; dragId = null; lastKey = null; }
       wrap.addEventListener('pointerup', endDrag);
       wrap.addEventListener('pointercancel', endDrag);
+      wrap.addEventListener('keydown', function (e) {
+        if ((e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') || won) return;
+        var cellEl = e.target && e.target.closest ? e.target.closest('.fl-cell') : null;
+        if (!cellEl || cellEl.dataset.x === undefined || cellEl.classList.contains('fl-rock')) return;
+        e.preventDefault();
+        pressCell(+cellEl.dataset.x, +cellEl.dataset.y, false);
+      });
 
       /* ---------- toolbar ---------- */
       api.button(App.t('ui.undo'), function () {
@@ -1989,8 +2183,6 @@ window.App = (function () {
       var stones = {};      // key -> button element
       var path = [];        // keys, in walk order
       var solved = false;
-      var walking = false;  // auto-walk in progress
-      var walkTimer = null;
       var saidClose = false;
       var saidFirstHop = false;
       var saidComeBack = false;
@@ -2101,6 +2293,8 @@ window.App = (function () {
           st.classList.toggle('st-cur', ck === lastK);
           st.classList.toggle('st-choose', chooseMode);
           st.setAttribute('aria-pressed', v >= n ? 'true' : 'false');
+          if (ck === lastK) st.setAttribute('aria-current', 'step');
+          else st.removeAttribute('aria-current');
           if (v > 0) {
             st.querySelector('.st-bloom').textContent = FLOWERS[lastVisit[ck] % FLOWERS.length];
           }
@@ -2186,54 +2380,14 @@ window.App = (function () {
         encourage();
       }
 
-      /* ---------- auto-walk: tap a far stone and the kitty strolls over ---------- */
-      function stopWalk() {
-        if (walkTimer !== null) { clearTimeout(walkTimer); walkTimer = null; }
-        walking = false;
-      }
-
-      function bfsPath(fromK, toK) {
-        var prev = {};
-        prev[fromK] = null;
-        var queue = [fromK];
-        var head = 0;
-        while (head < queue.length) {
-          var cur = queue[head++];
-          if (cur === toK) break;
-          var p = parseKey(cur);
-          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
-            var nk = (p[0] + d[0]) + ',' + (p[1] + d[1]);
-            if (cellSet[nk] && !(nk in prev)) { prev[nk] = cur; queue.push(nk); }
-          });
-        }
-        if (!(toK in prev)) return null;
-        var route = [];
-        for (var c = toK; c !== null; c = prev[c]) route.unshift(c);
-        return route;                      // includes fromK
-      }
-
-      function autoWalk(route) {           // route excludes the current stone
-        walking = true;
-        var i = 0;
-        function stepNext() {
-          walkTimer = null;
-          doStep(route[i]);
-          i++;
-          if (i < route.length && !solved) {
-            walkTimer = setTimeout(stepNext, 200);
-            timers.push(walkTimer);
-          } else {
-            walking = false;
-          }
-        }
-        stepNext();
-      }
-
       function undoStep() {
         if (solved) return;
-        stopWalk();
         var minLen = fixedStart ? 1 : 0;
-        if (path.length <= minLen) { api.sound.tap(); return; }
+        if (path.length <= minLen) {
+          api.sound.tap();
+          api.say(App.t('steps.msg.undoEmpty'));
+          return;
+        }
         path.pop();
         refresh();
         api.sound.slide();
@@ -2241,14 +2395,14 @@ window.App = (function () {
 
       function restart() {
         if (solved) return;
-        stopWalk();
         path = fixedStart ? [fixedStart[0] + ',' + fixedStart[1]] : [];
         refresh();
         api.sound.slide();
+        api.say(App.t('steps.msg.fresh'));
       }
 
       function tapStone(k, fromDrag) {
-        if (solved || walking || !cellSet[k]) return;
+        if (solved || !cellSet[k]) return;
 
         if (path.length === 0) {           // free start: any stone at all
           path.push(k);
@@ -2280,9 +2434,10 @@ window.App = (function () {
         }
 
         if (fromDrag) return;              // drags only walk stone by stone
-
-        var route = bfsPath(lastK, k);     // farther away: stroll over, stone by stone
-        if (route && route.length > 1) autoWalk(route.slice(1));
+        api.sound.bad();
+        stones[k].classList.add('pg-shake');
+        later(function () { stones[k].classList.remove('pg-shake'); }, 420);
+        api.say(App.t('steps.msg.adjacent'));
       }
 
       /* ---------- input: taps, drags, keyboard ---------- */
@@ -2308,16 +2463,19 @@ window.App = (function () {
         tapStone(k, true);
       }
       function endDrag() { dragging = false; lastDragKey = null; }
-      function onKeyClick(e) {
-        if (e.detail !== 0) return;        // keyboard activation only
+      function onKeyDown(e) {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
         var st = e.target && e.target.closest ? e.target.closest('.st-stone') : null;
-        if (st && st.dataset.key) tapStone(st.dataset.key, false);
+        if (st && st.dataset.key) {
+          e.preventDefault();
+          tapStone(st.dataset.key, false);
+        }
       }
       grid.addEventListener('pointerdown', onPointerDown);
       grid.addEventListener('pointermove', onPointerMove);
       grid.addEventListener('pointerup', endDrag);
       grid.addEventListener('pointercancel', endDrag);
-      grid.addEventListener('click', onKeyClick);
+      grid.addEventListener('keydown', onKeyDown);
 
       /* ---------- toolbar ---------- */
       api.button(App.t('ui.undo'), undoStep);
@@ -2337,7 +2495,6 @@ window.App = (function () {
       }
 
       return function cleanup() {
-        stopWalk();
         timers.forEach(clearTimeout);
         window.removeEventListener('resize', placeCat);
       };
@@ -2605,6 +2762,7 @@ window.App = (function () {
     });
 
     var tiles = [];       // current arrangement (same holes as solvedTiles)
+    var initialTiles = []; // exact opening layout restored by Start over
     var cellEls = [];     // <button> per index, null for holes
     var sel = -1;         // lifted slab index, -1 = none
     var busy = false;     // true while a swap animates
@@ -2622,6 +2780,12 @@ window.App = (function () {
       var id = setTimeout(fn, ms);
       timeouts.push(id);
       return id;
+    }
+
+    function copyTiles(source) {
+      return source.map(function (tile) {
+        return tile ? { c: tile.c, kind: tile.kind } : null;
+      });
     }
 
     /* ---------- solved / power analysis ---------- */
@@ -2979,7 +3143,7 @@ window.App = (function () {
       history = [];
       prevLit = {};
       quietSwaps = 0;
-      scramble();
+      tiles = copyTiles(initialTiles);
       var f = analyse();
       maxPowered = f.poweredCount;
       paint(f);
@@ -2988,6 +3152,7 @@ window.App = (function () {
 
     /* ---------- go ---------- */
     scramble();
+    initialTiles = copyTiles(tiles);
     buildBoard();
     var f0 = analyse();
     maxPowered = f0.poweredCount;
@@ -3201,7 +3366,8 @@ window.App = (function () {
     '.cr-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%;}',
     '.cr-grid{display:grid;gap:0;width:100%;margin:0 auto;position:relative;',
     '  touch-action:none;user-select:none;-webkit-user-select:none;}',
-    '.cr-cell{aspect-ratio:1;position:relative;border-radius:10px;}',
+    '.cr-cell{aspect-ratio:1;position:relative;border-radius:10px;padding:0;',
+    '  border:0;color:inherit;font:inherit;}',
     '.cr-grass{background:transparent;}',
     '.cr-wall{background:color-mix(in srgb, var(--leaf) 52%, var(--card-soft));',
     '  border:2px solid color-mix(in srgb, var(--leaf-deep) 22%, var(--card-soft));',
@@ -3245,6 +3411,7 @@ window.App = (function () {
   /* ---------------------------------------------------------- */
   function el(tag, cls, text) {
     var n = document.createElement(tag);
+    if (tag === 'button') n.type = 'button';
     if (cls) n.className = cls;
     if (text !== undefined && text !== null) n.textContent = text;
     return n;
@@ -3322,10 +3489,13 @@ window.App = (function () {
     board.textContent = '';
     var wrap = el('div', 'cr-wrap');
     var grid = el('div', 'cr-grid');
+    grid.setAttribute('role', 'group');
+    grid.setAttribute('aria-label', App.t('crates.aria.board'));
     grid.style.gridTemplateColumns = 'repeat(' + p.cols + ', 1fr)';
     grid.style.maxWidth = Math.min(p.cols * 84, 470) + 'px';
 
     var x, y;
+    var cellEls = {};
     for (y = 0; y < p.rows; y++) {
       for (x = 0; x < p.cols; x++) {
         var k = key(x, y);
@@ -3333,9 +3503,10 @@ window.App = (function () {
         if (p.wall[k]) cls += 'cr-wall';
         else if (p.open[k]) cls += 'cr-floor' + (p.spot[k] ? ' cr-spotcell' : '');
         else cls += 'cr-grass';
-        var cell = el('div', cls);
+        var cell = el(p.open[k] ? 'button' : 'div', cls);
         cell.setAttribute('data-x', String(x));
         cell.setAttribute('data-y', String(y));
+        if (p.open[k]) cellEls[k] = cell;
         if (p.spot[k] && p.open[k]) {
           var fl = el('span', 'cr-flower', '🌼');
           fl.setAttribute('aria-hidden', 'true');
@@ -3349,8 +3520,7 @@ window.App = (function () {
       var a = el('div', 'cr-actor ' + cls);
       a.style.width = 'calc(100% / ' + p.cols + ')';
       a.style.height = 'calc(100% / ' + p.rows + ')';
-      a.setAttribute('role', 'img');
-      a.setAttribute('aria-label', label);
+      a.setAttribute('aria-hidden', 'true');
       var inner = el('span', 'cr-inner');
       inner.appendChild(el('span', 'cr-face', face));
       a.appendChild(inner);
@@ -3378,6 +3548,28 @@ window.App = (function () {
       for (var i = 0; i < crates.length; i++) {
         var on = !!p.spot[key(crates[i][0], crates[i][1])];
         crateEls[i].root.classList.toggle('cr-on', on);
+      }
+      refreshAccessibility();
+    }
+    function refreshAccessibility() {
+      for (var y = 0; y < p.rows; y++) {
+        for (var x = 0; x < p.cols; x++) {
+          var k = key(x, y);
+          var cell = cellEls[k];
+          if (!cell) continue;
+          var ci = crateAt(x, y);
+          var hasCat = cat[0] === x && cat[1] === y;
+          var item = ci >= 0
+            ? (p.spot[k] ? App.t('crates.aria.crateOnSpot') : App.t('crates.aria.crate'))
+            : hasCat
+              ? (p.spot[k] ? App.t('crates.aria.catOnSpot') : App.t('crates.aria.cat'))
+              : p.spot[k] ? App.t('crates.aria.spot') : App.t('crates.aria.floor');
+          cell.setAttribute('aria-label', App.t('crates.aria.cell', {
+            r: y + 1, c: x + 1, item: item
+          }));
+          if (hasCat) cell.setAttribute('aria-current', 'true');
+          else cell.removeAttribute('aria-current');
+        }
       }
     }
 
@@ -3537,6 +3729,7 @@ window.App = (function () {
       badStreak = 0;
       cat[0] = pos[0]; cat[1] = pos[1];
       place(catEl, cat);
+      refreshAccessibility();
       retrigger(catEl.inner, 'cr-hop');
       api.sound.tap();
     }
@@ -3611,6 +3804,14 @@ window.App = (function () {
       }
     });
     grid.addEventListener('pointercancel', function () { press = null; });
+    grid.addEventListener('keydown', function (e) {
+      if ((e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') || finished) return;
+      var cell = e.target && e.target.closest ? e.target.closest('.cr-cell') : null;
+      if (cell) {
+        e.preventDefault();
+        onTap(cell);
+      }
+    });
 
     /* ---------- keyboard ---------- */
     var KEYS = {
