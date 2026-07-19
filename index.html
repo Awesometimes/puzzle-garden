@@ -1,0 +1,3686 @@
+<meta charset="utf-8">
+<title>Puzzle Garden</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Puzzle Garden">
+<style>
+/* ============================================================
+   Puzzle Garden — shared styles
+   Cozy picture-book identity: warm eggshell ground, chunky
+   rounded shapes, pastel garden accents, large friendly type.
+   All components style through tokens; themes redefine tokens.
+   ============================================================ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ground + ink */
+  --paper: #FBF5E9;
+  --card: #FFFFFF;
+  --card-soft: #FFFDF7;
+  --ink: #46392E;
+  --soft: #79695A;
+  --line: #E9DCC3;
+  --shadow: 0 6px 18px rgba(94, 72, 45, 0.10);
+
+  /* garden accents (pastel fills) */
+  --leaf: #8FC79A;
+  --petal: #F4AFC0;
+  --sky: #93C6E8;
+  --butter: #F8CD74;
+  --lilac: #C3B1E6;
+  --coral: #F4A98E;
+
+  /* deep partners (readable on paper, used for text/lines/icons) */
+  --leaf-deep: #337146;
+  --petal-deep: #AF4A68;
+  --sky-deep: #2F6E9E;
+  --butter-deep: #8F6404;
+  --lilac-deep: #6B4FA5;
+  --coral-deep: #AF5330;
+
+  --glow: #FFF3C9; /* highlight for lit / active tiles */
+
+  --font: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+          "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --radius-lg: 28px;
+  --radius-md: 18px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #2A241D;
+    --card: #383127;
+    --card-soft: #332D24;
+    --ink: #F4EBDC;
+    --soft: #BFB09D;
+    --line: #4C4335;
+    --shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    --leaf-deep: #A5DBB2;
+    --petal-deep: #F5B9C8;
+    --sky-deep: #A8D2EE;
+    --butter-deep: #F3CE82;
+    --lilac-deep: #CDBCEE;
+    --coral-deep: #F5B49D;
+    --glow: #5C5133;
+  }
+}
+:root[data-theme="light"] {
+  --paper: #FBF5E9; --card: #FFFFFF; --card-soft: #FFFDF7;
+  --ink: #46392E; --soft: #79695A; --line: #E9DCC3;
+  --shadow: 0 6px 18px rgba(94, 72, 45, 0.10);
+  --leaf-deep: #337146; --petal-deep: #AF4A68; --sky-deep: #2F6E9E;
+  --butter-deep: #8F6404; --lilac-deep: #6B4FA5; --coral-deep: #AF5330;
+  --glow: #FFF3C9;
+}
+:root[data-theme="dark"] {
+  --paper: #2A241D; --card: #383127; --card-soft: #332D24;
+  --ink: #F4EBDC; --soft: #BFB09D; --line: #4C4335;
+  --shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --leaf-deep: #A5DBB2; --petal-deep: #F5B9C8; --sky-deep: #A8D2EE;
+  --butter-deep: #F3CE82; --lilac-deep: #CDBCEE; --coral-deep: #F5B49D;
+  --glow: #5C5133;
+}
+
+/* rounded CJK faces when the app is in Chinese */
+:root[lang="zh-Hans"] {
+  --font: ui-rounded, "SF Pro Rounded", "Yuanti SC", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+}
+/* touch-action: manipulation kills iOS double-tap-to-zoom everywhere while
+   keeping pinch-zoom + scroll; drag/swipe boards override to `none` (higher
+   specificity), so this base never steals their gestures. */
+* { box-sizing: border-box; touch-action: manipulation; }
+
+html {
+  font-size: 20px; /* deliberately large base; user toggle scales it */
+  /* stop the browser's swipe-to-navigate and pull-to-refresh, so a swipe
+     over the board stays in the game instead of leaving the page */
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--leaf) 14%, transparent) 0 140px, transparent 160px),
+    radial-gradient(circle at 90% 20%, color-mix(in srgb, var(--petal) 12%, transparent) 0 120px, transparent 140px),
+    radial-gradient(circle at 80% 92%, color-mix(in srgb, var(--sky) 12%, transparent) 0 150px, transparent 170px),
+    var(--paper);
+  background-attachment: fixed;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;   /* no long-press callout/magnifier on emoji */
+  user-select: none;
+  -webkit-user-select: none;     /* no selection-magnifier zoom on iOS */
+}
+
+#app {
+  max-width: 590px;
+  margin: 0 auto;
+  padding: clamp(12px, 3vw, 24px) clamp(12px, 3vw, 20px) 60px;
+}
+
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sky-deep);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ---------- big friendly button ---------- */
+.pg-btn {
+  min-height: 58px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--line);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pg-btn:active { transform: translateY(2px) scale(0.98); box-shadow: 0 1px 0 var(--line); }
+.pg-btn.primary {
+  background: var(--leaf-deep);
+  border-color: var(--leaf-deep);
+  color: var(--paper);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--leaf-deep) 60%, black);
+}
+.pg-btn.quiet {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+  color: var(--soft);
+}
+
+/* ---------- home ---------- */
+.home-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 10px 0 20px;
+}
+.home-head .mascot { width: 108px; }
+.home-head h1 {
+  font-size: 1.9rem;
+  letter-spacing: 0.01em;
+}
+.home-head .sub { margin: 0; color: var(--soft); font-size: 0.9rem; }
+
+.toggles {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.toggles .pg-btn { min-height: 48px; font-size: 0.8rem; padding: 6px 18px; }
+
+.cards { display: grid; gap: 16px; }
+
+.game-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  width: 100%;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  touch-action: manipulation;
+}
+.game-card:active { transform: scale(0.985); }
+.game-card .badge {
+  width: 66px;
+  height: 66px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  background: var(--accent, var(--leaf));
+  border: 2px solid color-mix(in srgb, var(--accent, var(--leaf)) 70%, var(--ink));
+}
+.game-card h2 { font-size: 1.15rem; }
+.game-card .tagline { margin: 3px 0 0; color: var(--soft); font-size: 0.85rem; line-height: 1.35; }
+.game-card .prog {
+  font-size: 0.8rem;
+  color: var(--soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.game-card .chev { font-size: 1.3rem; color: var(--soft); }
+
+/* ---------- level select ---------- */
+.screen-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 14px;
+}
+.screen-head .title { flex: 1; text-align: center; }
+.screen-head .title h2 { font-size: 1.3rem; }
+.screen-head .title .meta { color: var(--soft); font-size: 0.8rem; margin: 2px 0 0; }
+.screen-head .spacer { width: 92px; }
+
+.howto {
+  margin: 0 auto 16px;
+  max-width: 46ch;
+  text-align: center;
+  color: var(--soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.lvl-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.lvl-btn {
+  aspect-ratio: 1;
+  border-radius: 24px;
+  border: 2px solid var(--line);
+  background: var(--card);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--line);
+  display: grid;
+  place-items: center;
+  transition: transform 0.08s ease;
+  touch-action: manipulation;
+}
+.lvl-btn:active { transform: scale(0.94); }
+.lvl-btn.done {
+  background: color-mix(in srgb, var(--leaf) 30%, var(--card));
+  border-color: var(--leaf-deep);
+}
+.lvl-btn.next {
+  border-color: var(--butter-deep);
+  background: color-mix(in srgb, var(--butter) 26%, var(--card));
+}
+.lvl-btn .mark { font-size: 1.5rem; line-height: 1; }
+.lvl-btn .num { font-size: 0.75rem; color: var(--soft); }
+
+/* ---------- play screen ---------- */
+.mascot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 10px;
+  min-height: 64px;
+}
+.mascot-row .mascot { width: 62px; flex-shrink: 0; }
+.bubble {
+  position: relative;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  box-shadow: var(--shadow);
+}
+.bubble::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  border-left: 2px solid var(--line);
+  border-bottom: 2px solid var(--line);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.board-card {
+  background: var(--card-soft);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: clamp(12px, 3vw, 20px);
+  display: grid;
+  place-items: center;
+}
+#board { width: 100%; }
+
+#toolbar {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+/* base tile games may reuse */
+.pg-tile {
+  aspect-ratio: 1;
+  border-radius: 20%;
+  border: 2px solid var(--line);
+  background: var(--card);
+  display: grid;
+  place-items: center;
+  font-size: clamp(20px, 6vw, 34px);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+
+/* gentle "not quite" wiggle */
+.pg-shake { animation: pg-shake 0.35s ease; }
+@keyframes pg-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+/* soft appear for boards/screens */
+.pg-pop { animation: pg-pop 0.25s ease; }
+@keyframes pg-pop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- win overlay ---------- */
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 40;
+  animation: pg-fade 0.25s ease;
+}
+@keyframes pg-fade { from { opacity: 0; } to { opacity: 1; } }
+.win-card {
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 28px 26px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: pg-pop 0.3s ease;
+}
+.win-card .mascot { width: 96px; }
+.win-card h2 { font-size: 1.5rem; }
+.win-card p { margin: 0 0 8px; color: var(--soft); font-size: 0.9rem; }
+.win-card .pg-btn { width: 100%; }
+
+/* falling petals */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+.confetti span {
+  position: absolute;
+  top: -10%;
+  font-size: 26px;
+  animation: petal-fall linear forwards;
+}
+@keyframes petal-fall {
+  to { transform: translateY(115vh) rotate(340deg); opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 420px) {
+  html { font-size: 18px; }
+  .game-card .prog { display: none; }
+}
+
+</style>
+<main id="app"></main>
+<script>
+/* ============================================================
+   Puzzle Garden — translations (English / 简体中文)
+   Flat keys; {x} placeholders; arrays are pick-one pools.
+   ============================================================ */
+'use strict';
+
+window.I18N = {
+  en: {
+    'app.title': 'Puzzle Garden',
+    'app.sub': 'Cozy little puzzles, grown with love',
+    'ui.soundOn': '🔔 Sound on',
+    'ui.soundOff': '🔕 Sound off',
+    'ui.textSize': 'Aa Text size',
+    'ui.night': '🌙 Night',
+    'ui.day': '☀️ Light',
+    'ui.lang': '🌐 中文',
+    'ui.undo': '↩ Undo',
+    'ui.restart': '⟲ Start over',
+    'nav.home': '‹ Home',
+    'nav.puzzles': '‹ Puzzles',
+    'home.new': 'New!',
+    'home.prog': '{n} of {t} 🌼',
+    'home.allDone': 'All done 🌼',
+    'levels.meta': '{n} of {t} puzzles solved',
+    'levels.puzzle': 'Puzzle {n}',
+    'levels.next': 'Up next!',
+    'levels.solvedSuffix': ', solved',
+    'play.meta': 'Puzzle {n} of {t}',
+    'win.solved': 'You solved puzzle {n}.',
+    'win.finishedAll': 'You finished every {title} puzzle! 🌸',
+    'win.next': 'Next puzzle ›',
+    'win.all': 'All puzzles',
+    'cheer.start': [
+      'Take your time — there is no rush at all. 🌿',
+      'I picked this one just for you!',
+      'Ooh, a fresh puzzle. Let’s look at it together.',
+      'You’ve got this! I’m right here.',
+      'A little puzzle and a deep breath. 🌸',
+      'Every try counts. Have fun with it!'
+    ],
+    'cheer.win': ['Wonderful!', 'You did it!', 'Beautiful work!', 'Hooray! 🎉', 'That was lovely!', 'Brilliant!'],
+
+    'flow.title': 'Flower Paths',
+    'flow.tagline': 'Join the matching flowers',
+    'flow.howTo': 'Tap a flower, then tap tile after tile to reach its twin — and visit every tile.',
+    'flow.aria.rest': 'resting stone',
+    'flow.aria.flower': '{icon} flower',
+    'flow.aria.tile': 'garden tile',
+    'flow.hint.beside': 'Tap a tile right beside the glowing end of the path. ↩ Undo helps too!',
+    'flow.hint.longer': 'So close! Every tile wants a visit — try a longer path. 🌱',
+    'flow.hint.otherPair': 'Lovely! Now the other pair — and visit every tile. 🌼',
+    'flow.hint.onePair': 'Just one pair left — you are nearly there! 🌸',
+    'flow.hint.reach': 'Keep going tile by tile until the path reaches this {icon}.',
+    'flow.hint.tapFirst': 'Tap a flower first! 🌸',
+    'flow.hint.undoEmpty': 'Nothing to undo — fresh as a daisy! 🌼',
+    'flow.hint.fresh': 'A fresh start — take your time. 🌿',
+    'flow.hint.teach': 'Tap a flower, then tap tile after tile to reach its twin. 🌷',
+    'flow.hint.stone': 'The grey stone is just resting — paths go around it. 🪨',
+
+    'steps.title': 'Stone Steps',
+    'steps.tagline': 'Light every stone all at once',
+    'steps.howTo': 'Hop stone to stone and light them all up at once — hopping onto a lit stone puts it back out!',
+    'steps.aria.stone': 'Stone, column {x}, row {y}',
+    'steps.msg.boxed': 'Hmm, boxed in! Undo a little, or start fresh — no worries. 🍃',
+    'steps.msg.firstHop': 'Lovely hop! Light up every single stone. ✨',
+    'steps.msg.twoLeft': 'So close — just two stones left! ✨',
+    'steps.msg.thereShe': 'There she is! Now tap a stone right beside her. 🐾',
+    'steps.msg.adjacent': 'Try a stone that touches the kitty’s stone, side by side. 🐾',
+    'steps.msg.anyStone': 'Tap any stone — the kitty will hop right on! 🐱',
+    'steps.msg.ownSpot': 'This time the kitty picked her own spot. Walk from there! 🐾',
+    'steps.msg.arrowIntro': 'Arrow stones can be crossed any way — but they only LIGHT when you hop on along the arrow. → means come from its left!',
+    'steps.msg.arrowMiss': 'No glow that time — to light it, hop on the way the arrow points. ➡️',
+    'steps.msg.toggle': 'Oh! Stepping on a lit stone puts it back to sleep — step on it again later to relight it. 🌙',
+    'steps.msg.twiceIntro': 'Twin-arrow stones want two visits — hop on, hop away, then come back! ✨',
+    'steps.msg.comeBack': 'One more visit later and this stone will fully bloom! 🌱',
+    'steps.aria.oneWay': ', arrow stone',
+    'steps.aria.twiceStone': ', needs two visits',
+
+    'pipes.title': 'Lantern Lines',
+    'pipes.tagline': 'Light every little lantern',
+    'pipes.howTo': 'Tap two slabs to trade places — or drag a slab onto another — and lead the golden line to every lantern.',
+    'pipes.moss': ['That mossy slab is stuck tight!', 'The moss holds that one snug in place. 🌿'],
+    'pipes.restart': ['A fresh shuffle — take all the time you like. 🌸', 'Same puzzle, freshly mixed. You know it better now!'],
+    'pipes.msg.allLit': 'Every lantern glows! Now help the last slabs join the golden line. ✨',
+    'pipes.msg.close': 'Ooh, so close! The last lanterns can hardly wait. ✨',
+    'pipes.msg.stuck': 'No hurry at all. Watch where the golden glow stops — a swap right there helps. 🌿',
+    'pipes.msg.undoEmpty': 'Nothing to undo — the garden is all fresh. 🌱',
+    'pipes.msg.teach': 'Tap one slab, then another — they trade places! You can also drag a slab. Lead the gold line to the lantern. 🏮',
+    'pipes.msg.finale': 'The grand finale! Six little lanterns are waiting to shine. ✨',
+    'pipes.aria.board': 'Lantern Lines board',
+    'pipes.aria.source': 'Sun stone',
+    'pipes.aria.lampLit': 'Lantern, glowing',
+    'pipes.aria.lampDim': 'Lantern, not lit yet',
+    'pipes.aria.wire': 'Wire slab',
+    'pipes.aria.pos': ', row {r}, column {c}',
+    'pipes.aria.moss': ', held by moss',
+    'pipes.aria.lifted': ', lifted',
+
+    'crates.title': 'Cozy Crates',
+    'crates.tagline': 'Nudge crates onto the flowers',
+    'crates.howTo': 'Tap where the cat should go. Tap a crate next to the cat to push it onto a flower.',
+    'crates.aria.up': 'Move up',
+    'crates.aria.down': 'Move down',
+    'crates.aria.left': 'Move left',
+    'crates.aria.right': 'Move right',
+    'crates.aria.crate': 'crate',
+    'crates.aria.cat': 'cat',
+    'crates.msg.stuck': 'Stuck? ↩ Undo takes one step back. There is no rush at all. 🍃',
+    'crates.msg.oneLeft': 'Lovely! Just one crate to go. 🌼',
+    'crates.msg.corner': 'That crate is tucked in a corner. ↩ Undo can fetch it back. 🌿',
+    'crates.msg.pushHint': 'Walk right beside a crate, then tap it to push. 🐾',
+    'crates.msg.undoEmpty': 'We are right at the start already. 🌱',
+    'crates.msg.fresh': 'A fresh start. Take all the time you like. 🌱',
+    'crates.msg.teach': 'Tap a tile and the cat walks there. When the cat is beside a crate 📦, tap the crate to push it onto a flower!'
+  },
+
+  'zh-Hans': {
+    'app.title': '谜题花园',
+    'app.sub': '温馨的小谜题，用爱种出来',
+    'ui.soundOn': '🔔 声音开',
+    'ui.soundOff': '🔕 声音关',
+    'ui.textSize': 'Aa 字体大小',
+    'ui.night': '🌙 夜间',
+    'ui.day': '☀️ 白天',
+    'ui.lang': '🌐 English',
+    'ui.undo': '↩ 后退一步',
+    'ui.restart': '⟲ 重新开始',
+    'nav.home': '‹ 主页',
+    'nav.puzzles': '‹ 关卡',
+    'home.new': '新的！',
+    'home.prog': '已完成 {n}/{t} 🌼',
+    'home.allDone': '全部完成 🌼',
+    'levels.meta': '已完成 {n}/{t} 关',
+    'levels.puzzle': '第 {n} 关',
+    'levels.next': '就玩这关！',
+    'levels.solvedSuffix': '，已完成',
+    'play.meta': '第 {n} 关 · 共 {t} 关',
+    'win.solved': '你解开了第 {n} 关！',
+    'win.finishedAll': '《{title}》全部通关啦！🌸',
+    'win.next': '下一关 ›',
+    'win.all': '所有关卡',
+    'cheer.start': [
+      '慢慢来，一点都不着急。🌿',
+      '这一关是我特意为你挑的！',
+      '哇，新的谜题，我们一起看看吧。',
+      '你一定可以的！我就在旁边。',
+      '一个小谜题，一次深呼吸。🌸',
+      '每一次尝试都很棒，开心最重要！'
+    ],
+    'cheer.win': ['太棒了！', '你做到了！', '真漂亮！', '好耶！🎉', '真了不起！', '太聪明了！'],
+
+    'flow.title': '花儿手拉手',
+    'flow.tagline': '把一样的花儿连起来',
+    'flow.howTo': '点一朵花，再一格一格点过去，走到它的同伴那里——每一格都要走到哦。',
+    'flow.aria.rest': '休息的石头',
+    'flow.aria.flower': '{icon} 花',
+    'flow.aria.tile': '花园格子',
+    'flow.hint.beside': '点路径亮亮的一端旁边的格子。↩ 后退一步也很好用！',
+    'flow.hint.longer': '就差一点！每个格子都想被走到——试试绕远一点的路。🌱',
+    'flow.hint.otherPair': '真棒！再连另一对——记得每格都要走到。🌼',
+    'flow.hint.onePair': '只剩一对啦——马上就成功了！🌸',
+    'flow.hint.reach': '一格一格接着走，直到路连到这朵 {icon}。',
+    'flow.hint.tapFirst': '先点一朵花哦！🌸',
+    'flow.hint.undoEmpty': '没有可以后退的啦——干干净净！🌼',
+    'flow.hint.fresh': '重新开始——慢慢来。🌿',
+    'flow.hint.teach': '点一朵花，再一格一格走到它的同伴那里。🌷',
+    'flow.hint.stone': '灰石头在休息——路要绕开它。🪨',
+
+    'steps.title': '跳石头',
+    'steps.tagline': '把石头全部同时点亮',
+    'steps.howTo': '一块一块跳过去，让石头全部同时亮起来——踩到已点亮的石头，它会熄灭哦！',
+    'steps.aria.stone': '石头，第 {y} 行第 {x} 列',
+    'steps.msg.boxed': '呀，被困住了！后退几步，或者重新开始——不要紧的。🍃',
+    'steps.msg.firstHop': '跳得真好！把每一块石头都点亮吧。✨',
+    'steps.msg.twoLeft': '就差两块石头啦！✨',
+    'steps.msg.thereShe': '小猫就位啦！点它旁边的石头吧。🐾',
+    'steps.msg.adjacent': '要点和小猫挨着的石头哦。🐾',
+    'steps.msg.anyStone': '点任意一块石头，小猫就跳上去！🐱',
+    'steps.msg.ownSpot': '这次小猫自己选了位置，从那里出发吧！🐾',
+    'steps.msg.arrowIntro': '箭头石头随便怎么走都可以——但要顺着箭头的方向跳上去才会亮。→ 就是要从它左边跳过来！',
+    'steps.msg.arrowMiss': '这次没有亮——要顺着箭头的方向跳上去，它才会亮哦。➡️',
+    'steps.msg.toggle': '呀！踩到点亮的石头，它又睡着啦——待会儿再踩一次就会重新亮起来。🌙',
+    'steps.msg.twiceIntro': '双箭头石头要踩两次——跳上去，离开，再回来一次！✨',
+    'steps.msg.comeBack': '待会儿再来踩一次，它就会完全开花啦！🌱',
+    'steps.aria.oneWay': '，箭头石头',
+    'steps.aria.twiceStone': '，要踩两次',
+
+    'pipes.title': '点灯笼',
+    'pipes.tagline': '点亮每一盏小灯笼',
+    'pipes.howTo': '点两块石板让它们交换位置，也可以直接拖动——让金色的线连到每盏灯笼。',
+    'pipes.moss': ['长了苔藓的石板牢牢固定住啦！', '苔藓把它抱得紧紧的。🌿'],
+    'pipes.restart': ['重新打乱了——慢慢来。🌸', '还是这一关，重新洗过，你现在更熟悉它啦！'],
+    'pipes.msg.allLit': '每盏灯笼都亮了！再帮最后几块石板连进金线里。✨',
+    'pipes.msg.close': '就差一点点！灯笼们都等不及了。✨',
+    'pipes.msg.stuck': '不着急。看看金光停在哪里——在那里换一换就好。🌿',
+    'pipes.msg.undoEmpty': '没有可以后退的啦——都是新的。🌱',
+    'pipes.msg.teach': '点一块石板，再点另一块——它们会交换！也可以直接拖动石板。把金线引到灯笼那里。🏮',
+    'pipes.msg.finale': '大结局！六盏小灯笼都在等着发光。✨',
+    'pipes.aria.board': '点灯笼棋盘',
+    'pipes.aria.source': '太阳石',
+    'pipes.aria.lampLit': '灯笼（亮了）',
+    'pipes.aria.lampDim': '灯笼（还没亮）',
+    'pipes.aria.wire': '线路石板',
+    'pipes.aria.pos': '，第 {r} 行第 {c} 列',
+    'pipes.aria.moss': '，被苔藓固定',
+    'pipes.aria.lifted': '，已拿起',
+
+    'crates.title': '推箱子',
+    'crates.tagline': '把箱子推到小花上',
+    'crates.howTo': '点一下小猫要去的地方。点小猫旁边的箱子，就能把它推到小花上。',
+    'crates.aria.up': '向上走',
+    'crates.aria.down': '向下走',
+    'crates.aria.left': '向左走',
+    'crates.aria.right': '向右走',
+    'crates.aria.crate': '箱子',
+    'crates.aria.cat': '小猫',
+    'crates.msg.stuck': '卡住了吗？↩ 后退一步就好，一点也不用急。🍃',
+    'crates.msg.oneLeft': '真棒！只剩一个箱子啦。🌼',
+    'crates.msg.corner': '箱子躲进角落啦。↩ 后退一步能把它救回来。🌿',
+    'crates.msg.pushHint': '走到箱子旁边，再点它就能推。🐾',
+    'crates.msg.undoEmpty': '我们已经在起点啦。🌱',
+    'crates.msg.fresh': '重新开始，慢慢来。🌱',
+    'crates.msg.teach': '点一下格子，小猫就会走过去。小猫挨着箱子 📦 时，点一下箱子就能把它推到小花上！'
+  }
+};
+
+
+/* ================================================== */
+
+/* ============================================================
+   Puzzle Garden — app shell
+   Screens: home → level select → play. Games register with
+   App.registerGame(def) and render into #board via def.start().
+   ============================================================ */
+'use strict';
+
+window.App = (function () {
+  const games = [];
+  const KEY = 'puzzle-garden-v1';
+
+  let store;
+  try { store = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { store = {}; }
+  if (!store.done) store.done = {};
+  if (typeof store.sound !== 'boolean') store.sound = true;
+  if (typeof store.scale !== 'number') store.scale = 0;
+  if (store.theme !== 'light' && store.theme !== 'dark') store.theme = null;
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* private mode: play without saving */ }
+  }
+
+  /* ---------- gentle synthesized sounds ---------- */
+  let audio = null;
+  function ctx() {
+    if (!store.sound) return null;
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      return audio;
+    } catch (e) { return null; }
+  }
+  function blip(freq, dur, type, vol, delay) {
+    const c = ctx();
+    if (!c) return;
+    dur = dur || 0.09; type = type || 'sine'; vol = vol || 0.05; delay = delay || 0;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    const t = c.currentTime + delay;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(c.destination);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  }
+  const sound = {
+    tap: function () { blip(523, 0.06); },
+    place: function () { blip(659, 0.09); },
+    slide: function () { blip(440, 0.05); blip(587, 0.05, 'sine', 0.04, 0.05); },
+    good: function () { blip(523, 0.09); blip(659, 0.1, 'sine', 0.05, 0.08); },
+    bad: function () { blip(196, 0.14, 'triangle', 0.035); },
+    win: function () { [523, 659, 784, 1047].forEach(function (f, i) { blip(f, 0.18, 'sine', 0.05, i * 0.12); }); }
+  };
+
+  /* ---------- mascot (Sprout the cat) ---------- */
+  const MASCOT_SVG =
+    '<svg viewBox="0 0 120 112" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sprout the cat">' +
+    '<g stroke="#4A3A2C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M28 40 L20 14 L44 26 Z" fill="#F6EBDD"/>' +
+    '<path d="M92 40 L100 14 L76 26 Z" fill="#F6EBDD"/>' +
+    '<path d="M29 37 L25 22 L38 29 Z" fill="#F4AFC0" stroke="none"/>' +
+    '<path d="M91 37 L95 22 L82 29 Z" fill="#F4AFC0" stroke="none"/>' +
+    '<ellipse cx="60" cy="66" rx="42" ry="38" fill="#F6EBDD"/>' +
+    '<path d="M60 12 q-2 -8 4 -10 M60 12 q8 -4 10 2" fill="none" stroke="#57904F"/>' +
+    '<ellipse cx="52" cy="7" rx="7" ry="4.5" fill="#8FC79A" transform="rotate(-22 52 7)"/>' +
+    '<ellipse cx="70" cy="8" rx="7" ry="4.5" fill="#8FC79A" transform="rotate(20 70 8)"/>' +
+    '</g>' +
+    '<g class="mascot-eyes" stroke="#4A3A2C" stroke-width="3.6" stroke-linecap="round" fill="none">' +
+    '<path d="M40 62 q6 -8 12 0"/>' +
+    '<path d="M68 62 q6 -8 12 0"/>' +
+    '</g>' +
+    '<path d="M56 74 q4 4 8 0" stroke="#4A3A2C" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+    '<ellipse cx="34" cy="74" rx="7" ry="4.5" fill="#F4AFC0" opacity="0.75"/>' +
+    '<ellipse cx="86" cy="74" rx="7" ry="4.5" fill="#F4AFC0" opacity="0.75"/>' +
+    '</svg>';
+
+  /* ---------- language ---------- */
+  /* Grandma-first: Simplified Chinese by default, English one 🌐 tap away. */
+  const LANGS = ['zh-Hans', 'en'];
+  if (LANGS.indexOf(store.lang) === -1) store.lang = null; // null = default (简体)
+
+  function lang() { return store.lang || 'zh-Hans'; }
+  function t(key, subs) {
+    const dicts = window.I18N || {};
+    let v = dicts[lang()] ? dicts[lang()][key] : undefined;
+    if (v === undefined && dicts.en) v = dicts.en[key];
+    if (v === undefined) v = key;
+    if (typeof v === 'string' && subs) {
+      for (const k in subs) v = v.split('{' + k + '}').join(subs[k]);
+    }
+    return v;
+  }
+  function applyLang() { document.documentElement.lang = lang(); }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  /* ---------- tiny DOM helpers ---------- */
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+  function mascot(cls) {
+    const d = el('div', 'mascot' + (cls ? ' ' + cls : ''));
+    d.innerHTML = MASCOT_SVG;
+    return d;
+  }
+
+  /* ---------- screen management ---------- */
+  let cleanupFn = null;
+  function swap(build) {
+    if (cleanupFn) { try { cleanupFn(); } catch (e) { /* ignore */ } cleanupFn = null; }
+    const overlay = document.querySelector('.win-overlay');
+    if (overlay) overlay.remove();
+    const root = document.getElementById('app');
+    root.innerHTML = '';
+    root.appendChild(build());
+    window.scrollTo(0, 0);
+  }
+
+  function doneCount(g) {
+    const d = store.done[g.id] || {};
+    let n = 0;
+    for (let i = 0; i < g.levels.length; i++) if (d[i]) n++;
+    return n;
+  }
+
+  /* ---------- home ---------- */
+  function home() {
+    swap(function () {
+      const frag = document.createDocumentFragment();
+
+      const head = el('div', 'home-head pg-pop');
+      head.appendChild(mascot());
+      head.appendChild(el('h1', null, t('app.title')));
+      const sub = el('p', 'sub', t('app.sub'));
+      head.appendChild(sub);
+
+      const toggles = el('div', 'toggles');
+      const sndBtn = el('button', 'pg-btn', store.sound ? t('ui.soundOn') : t('ui.soundOff'));
+      sndBtn.addEventListener('click', function () {
+        store.sound = !store.sound;
+        save();
+        sndBtn.textContent = store.sound ? t('ui.soundOn') : t('ui.soundOff');
+        if (store.sound) sound.place();
+      });
+      const sizeBtn = el('button', 'pg-btn', t('ui.textSize'));
+      sizeBtn.addEventListener('click', function () {
+        store.scale = (store.scale + 1) % 3;
+        save();
+        applyScale();
+        sound.tap();
+      });
+      const themeBtn = el('button', 'pg-btn', themeLabel());
+      themeBtn.addEventListener('click', function () {
+        store.theme = currentThemeIsDark() ? 'light' : 'dark';
+        save();
+        applyTheme();
+        themeBtn.textContent = themeLabel();
+        sound.tap();
+      });
+      const langBtn = el('button', 'pg-btn', t('ui.lang'));
+      langBtn.setAttribute('aria-label', 'Language / 语言');
+      langBtn.addEventListener('click', function () {
+        store.lang = LANGS[(LANGS.indexOf(lang()) + 1) % LANGS.length];
+        save();
+        applyLang();
+        sound.tap();
+        home();
+      });
+      toggles.appendChild(sndBtn);
+      toggles.appendChild(sizeBtn);
+      toggles.appendChild(themeBtn);
+      toggles.appendChild(langBtn);
+      head.appendChild(toggles);
+      frag.appendChild(head);
+
+      const cards = el('div', 'cards');
+      games.forEach(function (g) {
+        const c = el('button', 'game-card');
+        c.setAttribute('aria-label', g.title + ' — ' + g.tagline);
+        c.style.setProperty('--accent', g.accent);
+        const badge = el('div', 'badge', g.emoji);
+        const mid = el('div');
+        mid.appendChild(el('h2', null, g.title));
+        mid.appendChild(el('p', 'tagline', g.tagline));
+        const n = doneCount(g);
+        const prog = el('div', 'prog', n === 0 ? t('home.new') : (n === g.levels.length ? t('home.allDone') : t('home.prog', { n: n, t: g.levels.length })));
+        c.appendChild(badge);
+        c.appendChild(mid);
+        c.appendChild(prog);
+        c.addEventListener('click', function () { sound.tap(); levels(g); });
+        cards.appendChild(c);
+      });
+      frag.appendChild(cards);
+      return frag;
+    });
+  }
+
+  /* ---------- level select ---------- */
+  function levels(g) {
+    swap(function () {
+      const frag = document.createDocumentFragment();
+
+      const head = el('div', 'screen-head');
+      const back = el('button', 'pg-btn', t('nav.home'));
+      back.addEventListener('click', function () { sound.tap(); home(); });
+      const title = el('div', 'title');
+      title.appendChild(el('h2', null, g.emoji + ' ' + g.title));
+      title.appendChild(el('p', 'meta', t('levels.meta', { n: doneCount(g), t: g.levels.length })));
+      head.appendChild(back);
+      head.appendChild(title);
+      head.appendChild(el('div', 'spacer'));
+      frag.appendChild(head);
+
+      frag.appendChild(el('p', 'howto', g.howTo));
+
+      const grid = el('div', 'lvl-grid pg-pop');
+      const done = store.done[g.id] || {};
+      let nextIdx = -1;
+      for (let i = 0; i < g.levels.length; i++) { if (!done[i]) { nextIdx = i; break; } }
+      g.levels.forEach(function (_, i) {
+        const b = el('button', 'lvl-btn' + (done[i] ? ' done' : '') + (i === nextIdx ? ' next' : ''));
+        if (done[i]) {
+          b.appendChild(el('span', 'mark', '🌼'));
+          b.appendChild(el('span', 'num', t('levels.puzzle', { n: i + 1 })));
+        } else {
+          b.appendChild(el('span', 'mark', String(i + 1)));
+          if (i === nextIdx) b.appendChild(el('span', 'num', t('levels.next')));
+        }
+        b.setAttribute('aria-label', t('levels.puzzle', { n: i + 1 }) + (done[i] ? t('levels.solvedSuffix') : ''));
+        b.addEventListener('click', function () { sound.tap(); play(g, i); });
+        grid.appendChild(b);
+      });
+      frag.appendChild(grid);
+      return frag;
+    });
+  }
+
+  /* ---------- play ---------- */
+  function play(g, i) {
+    swap(function () {
+      const frag = document.createDocumentFragment();
+      let won = false;
+
+      const head = el('div', 'screen-head');
+      const back = el('button', 'pg-btn', t('nav.puzzles'));
+      back.addEventListener('click', function () { sound.tap(); levels(g); });
+      const title = el('div', 'title');
+      title.appendChild(el('h2', null, g.title));
+      title.appendChild(el('p', 'meta', t('play.meta', { n: i + 1, t: g.levels.length })));
+      head.appendChild(back);
+      head.appendChild(title);
+      head.appendChild(el('div', 'spacer'));
+      frag.appendChild(head);
+
+      const mrow = el('div', 'mascot-row');
+      mrow.appendChild(mascot());
+      const bubble = el('div', 'bubble', pick(t('cheer.start')));
+      mrow.appendChild(bubble);
+      frag.appendChild(mrow);
+
+      frag.appendChild(el('p', 'howto', g.howTo));
+
+      const boardCard = el('div', 'board-card pg-pop');
+      const board = el('div');
+      board.id = 'board';
+      boardCard.appendChild(board);
+      frag.appendChild(boardCard);
+
+      const toolbar = el('div');
+      toolbar.id = 'toolbar';
+      frag.appendChild(toolbar);
+
+      const api = {
+        levelIndex: i,
+        levelCount: g.levels.length,
+        sound: sound,
+        say: function (text) { bubble.textContent = text; },
+        button: function (label, onClick) {
+          const b = el('button', 'pg-btn', label);
+          b.addEventListener('click', onClick);
+          toolbar.appendChild(b);
+          return b;
+        },
+        win: function () {
+          if (won) return;
+          won = true;
+          if (!store.done[g.id]) store.done[g.id] = {};
+          store.done[g.id][i] = true;
+          save();
+          sound.win();
+          confetti();
+          setTimeout(function () { winOverlay(g, i); }, 700);
+        }
+      };
+
+      const cleanup = g.start(board, g.levels[i], api);
+      if (typeof cleanup === 'function') cleanupFn = cleanup;
+      return frag;
+    });
+  }
+
+  /* ---------- celebration ---------- */
+  function confetti() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const wrap = el('div', 'confetti');
+    const petals = ['🌸', '🌼', '🌷', '✨', '💮', '🍀'];
+    for (let i = 0; i < 26; i++) {
+      const s = el('span', null, pick(petals));
+      s.style.left = (Math.random() * 100) + '%';
+      s.style.animationDuration = (1.8 + Math.random() * 1.6) + 's';
+      s.style.animationDelay = (Math.random() * 0.5) + 's';
+      s.style.fontSize = (18 + Math.random() * 16) + 'px';
+      wrap.appendChild(s);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(function () { wrap.remove(); }, 4200);
+  }
+
+  function winOverlay(g, i) {
+    const old = document.querySelector('.win-overlay');
+    if (old) old.remove();
+    const overlay = el('div', 'win-overlay');
+    const card = el('div', 'win-card');
+    card.appendChild(mascot());
+    card.appendChild(el('h2', null, pick(t('cheer.win'))));
+
+    const isLast = i + 1 >= g.levels.length;
+    const allDone = doneCount(g) === g.levels.length;
+    card.appendChild(el('p', null,
+      isLast && allDone
+        ? t('win.finishedAll', { title: g.title })
+        : t('win.solved', { n: i + 1 })));
+
+    if (!isLast) {
+      const next = el('button', 'pg-btn primary', t('win.next'));
+      next.addEventListener('click', function () { sound.tap(); overlay.remove(); play(g, i + 1); });
+      card.appendChild(next);
+    }
+    const list = el('button', 'pg-btn' + (isLast ? ' primary' : ''), t('win.all'));
+    list.addEventListener('click', function () { sound.tap(); overlay.remove(); levels(g); });
+    card.appendChild(list);
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  }
+
+  /* ---------- settings ---------- */
+  function applyScale() {
+    document.documentElement.style.fontSize = ['100%', '112%', '126%'][store.scale] || '100%';
+  }
+  function currentThemeIsDark() {
+    if (store.theme) return store.theme === 'dark';
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function themeLabel() { return currentThemeIsDark() ? t('ui.day') : t('ui.night'); }
+  function applyTheme() {
+    if (store.theme) document.documentElement.setAttribute('data-theme', store.theme);
+    else document.documentElement.removeAttribute('data-theme');
+  }
+
+  /* Keep the player in the game: all navigation here is in-app (the ‹ Home /
+     ‹ Puzzles buttons), so the browser's back gesture would only ever kick
+     them out to the previous page. Park an extra history entry and re-park it
+     whenever back fires, so an accidental edge-swipe stays put. */
+  function guardBack() {
+    if (!window.history || !history.pushState) return;
+    try { history.pushState(null, '', location.href); } catch (e) { return; }
+    window.addEventListener('popstate', function () {
+      try { history.pushState(null, '', location.href); } catch (e) { /* ignore */ }
+    });
+  }
+
+  function init() {
+    applyScale();
+    applyTheme();
+    applyLang();
+    guardBack();
+    document.addEventListener('pointerdown', function unlock() { ctx(); }, { once: true });
+    home();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  return {
+    registerGame: function (def) { games.push(def); },
+    t: t
+  };
+})();
+
+
+/* ================================================== */
+
+/* ============================================================
+   Puzzle Garden — Flower Paths 🌸  (games/flow.js)
+   Join each pair of matching flowers with a gentle path of
+   taps (or a drag). Every open tile must be visited to win.
+
+   Coordinates are [col, row]; [0,0] is the top-left tile.
+   Every level below was drawn by hand — the region letters in
+   the comments show which pair's solution path covers which
+   tile, so the stored `solution` data is a genuine covering.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* ---------- flower palette: icon + colour always paired ---------- */
+  var TULIP = { icon: '🌷', fill: 'var(--petal)',  deep: 'var(--petal-deep)'  };
+  var DAISY = { icon: '🌼', fill: 'var(--butter)', deep: 'var(--butter-deep)' };
+  var BELL  = { icon: '🪻', fill: 'var(--lilac)',  deep: 'var(--lilac-deep)'  };
+  var ROSE  = { icon: '🌹', fill: 'var(--coral)',  deep: 'var(--coral-deep)'  };
+  var SUN   = { icon: '🌻', fill: 'var(--leaf)',   deep: 'var(--leaf-deep)'   };
+
+  function pr(f, a, b) {
+    return { icon: f.icon, fill: f.fill, deep: f.deep, a: a, b: b };
+  }
+
+  var LEVELS = [
+
+    /* 1 · 5×1 · 1 pair — the welcome mat, straight out of the
+       Staff x Sword intro: two runes, one straight road.
+       Ba B  B  B  Bb                                              */
+    { cols: 5, rows: 1,
+      pairs: [ pr(BELL, [0, 0], [4, 0]) ],
+      solution: [
+        [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]
+      ] },
+
+    /* 2 · 3×3 · 2 pairs — the friendly opener.
+       Ta T  T        T: (0,0)→(2,1) snakes through the top block
+       T  T  Tb       D: (0,2)→(2,2) a simple stroll along the bottom
+       Da D  Db                                                    */
+    { cols: 3, rows: 3,
+      pairs: [ pr(TULIP, [0, 0], [2, 1]), pr(DAISY, [0, 2], [2, 2]) ],
+      solution: [
+        [[0, 0], [0, 1], [1, 1], [1, 0], [2, 0], [2, 1]],
+        [[0, 2], [1, 2], [2, 2]]
+      ] },
+
+    /* 2 · 3×3 · 2 pairs — a first little twist.
+       Ba R  R        B: (0,0)→(1,2) down the left side
+       B  Ra R        R: (1,1)→(2,2) hooks over the top right
+       B  Bb Rb                                                    */
+    { cols: 3, rows: 3,
+      pairs: [ pr(BELL, [0, 0], [1, 2]), pr(ROSE, [1, 1], [2, 2]) ],
+      solution: [
+        [[0, 0], [0, 1], [0, 2], [1, 2]],
+        [[1, 1], [1, 0], [2, 0], [2, 1], [2, 2]]
+      ] },
+
+    /* 3 · 4×4 · 2 pairs — two long garden rows.
+       T  T  T  T     T: (0,1)→(3,1) weaves through the top half
+       Ta T  T  Tb    S: (0,2)→(3,2) weaves through the bottom half
+       Sa S  S  Sb
+       S  S  S  S                                                  */
+    { cols: 4, rows: 4,
+      pairs: [ pr(TULIP, [0, 1], [3, 1]), pr(SUN, [0, 2], [3, 2]) ],
+      solution: [
+        [[0, 1], [0, 0], [1, 0], [1, 1], [2, 1], [2, 0], [3, 0], [3, 1]],
+        [[0, 2], [0, 3], [1, 3], [1, 2], [2, 2], [2, 3], [3, 3], [3, 2]]
+      ] },
+
+    /* 4 · 4×4 · 3 pairs — three friends share the bed.
+       Ta D  D  D     T: (0,0)→(0,3) the left column
+       T  Ba B  Db    D: (1,0)→(3,3) around the top-right border
+       T  B  B  D     B: (1,1)→(2,3) an S through the middle
+       Tb B  Bb D                                                  */
+    { cols: 4, rows: 4,
+      pairs: [ pr(TULIP, [0, 0], [0, 3]), pr(DAISY, [1, 0], [3, 3]),
+               pr(BELL,  [1, 1], [2, 3]) ],
+      solution: [
+        [[0, 0], [0, 1], [0, 2], [0, 3]],
+        [[1, 0], [2, 0], [3, 0], [3, 1], [3, 2], [3, 3]],
+        [[1, 1], [2, 1], [2, 2], [1, 2], [1, 3], [2, 3]]
+      ] },
+
+    /* 5 · 4×4 · 3 pairs — a rose hooks around a daisy ring.
+       R  R  R  R     R: (0,1)→(3,3) a long hook over the top
+       Ra Da D  R     S: (0,2)→(2,3) along the bottom left
+       Sa Db D  R     D: (1,1)→(1,2) must circle the 2×2 block
+       S  S  Sb Rb                                                 */
+    { cols: 4, rows: 4,
+      pairs: [ pr(ROSE, [0, 1], [3, 3]), pr(SUN, [0, 2], [2, 3]),
+               pr(DAISY, [1, 1], [1, 2]) ],
+      solution: [
+        [[0, 1], [0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [3, 2], [3, 3]],
+        [[0, 2], [0, 3], [1, 3], [2, 3]],
+        [[1, 1], [2, 1], [2, 2], [1, 2]]
+      ] },
+
+    /* 6 · 5×5 · 3 pairs — nested frames.
+       Ta T  T  T  T      T: (0,0)→(4,4) top row + right column
+       Ba Sa S  S  T      B: (0,1)→(3,4) left column + bottom row
+       B  S  S  S  T      S: (1,1)→(3,3) fills the whole inner 3×3
+       B  S  S  Sb T
+       B  B  B  Bb Tb                                              */
+    { cols: 5, rows: 5,
+      pairs: [ pr(TULIP, [0, 0], [4, 4]), pr(BELL, [0, 1], [3, 4]),
+               pr(SUN,   [1, 1], [3, 3]) ],
+      solution: [
+        [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [4, 1], [4, 2], [4, 3], [4, 4]],
+        [[0, 1], [0, 2], [0, 3], [0, 4], [1, 4], [2, 4], [3, 4]],
+        [[1, 1], [2, 1], [3, 1], [3, 2], [2, 2], [1, 2], [1, 3], [2, 3], [3, 3]]
+      ] },
+
+    /* 7 · 5×5 · 4 pairs — four paths weave together.
+       Ta Da D  D  D      T: (0,0)→(2,4) left column + bottom
+       T  Ba B  Ra Db     D: (1,0)→(4,2) top row + right side
+       T  B  B  R  D      B: (1,1)→(2,3) inner-left S
+       T  B  Bb R  Rb     R: (3,1)→(4,3) inner-right hook
+       T  T  Tb R  R                                               */
+    { cols: 5, rows: 5,
+      pairs: [ pr(TULIP, [0, 0], [2, 4]), pr(DAISY, [1, 0], [4, 2]),
+               pr(BELL,  [1, 1], [2, 3]), pr(ROSE,  [3, 1], [4, 3]) ],
+      solution: [
+        [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [1, 4], [2, 4]],
+        [[1, 0], [2, 0], [3, 0], [4, 0], [4, 1], [4, 2]],
+        [[1, 1], [2, 1], [2, 2], [1, 2], [1, 3], [2, 3]],
+        [[3, 1], [3, 2], [3, 3], [3, 4], [4, 4], [4, 3]]
+      ] },
+
+    /* 8 · 5×5 · 4 pairs · one resting stone in the middle.
+       T  T  T  Tb Da     T: (0,2)→(3,0) curls through the top left
+       T  T  T  D  D      D: (4,0)→(4,3) dips inward around the stone
+       Ta Ra 🪨 D  D      R: (1,2)→(1,4) the bottom-left pocket
+       R  R  S  Sa Db     S: (3,3)→(4,4) the bottom-right pocket
+       R  Rb S  S  Sb                                              */
+    { cols: 5, rows: 5,
+      pairs: [ pr(TULIP, [0, 2], [3, 0]), pr(DAISY, [4, 0], [4, 3]),
+               pr(ROSE,  [1, 2], [1, 4]), pr(SUN,   [3, 3], [4, 4]) ],
+      blocked: [[2, 2]],
+      solution: [
+        [[0, 2], [0, 1], [0, 0], [1, 0], [1, 1], [2, 1], [2, 0], [3, 0]],
+        [[4, 0], [4, 1], [3, 1], [3, 2], [4, 2], [4, 3]],
+        [[1, 2], [1, 3], [0, 3], [0, 4], [1, 4]],
+        [[3, 3], [2, 3], [2, 4], [3, 4], [4, 4]]
+      ] }
+  ];
+
+  /* ---------- injected styles (tokens only, light+dark safe) ---------- */
+  var CSS_ID = 'flow-css';
+  var CSS =
+    '.fl-board{display:grid;gap:clamp(4px,1.5vw,10px);width:100%;margin:0 auto;touch-action:none;}' +
+    '.fl-cell{position:relative;aspect-ratio:1;border-radius:22%;border:2px solid var(--line);' +
+      'background:var(--card);display:grid;place-items:center;user-select:none;-webkit-user-select:none;' +
+      'cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;}' +
+    '.fl-cell.fl-end{background:color-mix(in srgb,var(--fl-fill) 18%,var(--card));' +
+      'border-color:color-mix(in srgb,var(--fl-fill) 65%,var(--line));}' +
+    '.fl-cell.fl-lit{background:color-mix(in srgb,var(--fl-fill) 26%,var(--card));' +
+      'border-color:color-mix(in srgb,var(--fl-fill) 55%,var(--line));}' +
+    '.fl-cell.fl-end.fl-lit{background:color-mix(in srgb,var(--fl-fill) 32%,var(--card));}' +
+    '.fl-cell.fl-on{box-shadow:0 0 0 3px color-mix(in srgb,var(--fl-fill) 40%,transparent),' +
+      '0 0 14px color-mix(in srgb,var(--fl-fill) 45%,transparent);}' +
+    '.fl-cell.fl-rock{background:color-mix(in srgb,var(--ink) 10%,var(--card));border-style:dashed;cursor:default;}' +
+    '.fl-rockface{opacity:.85;}' +
+    '.fl-way{position:absolute;inset:0;pointer-events:none;z-index:1;}' +
+    '.fl-core{position:absolute;left:50%;top:50%;width:46%;height:46%;' +
+      'transform:translate(-50%,-50%);border-radius:50%;background:var(--fl-fill);}' +
+    '.fl-arm{position:absolute;background:var(--fl-fill);}' +
+    '.fl-arm.fl-n{left:31%;width:38%;top:-6px;height:calc(50% + 6px);}' +
+    '.fl-arm.fl-s{left:31%;width:38%;bottom:-6px;height:calc(50% + 6px);}' +
+    '.fl-arm.fl-w{top:31%;height:38%;left:-6px;width:calc(50% + 6px);}' +
+    '.fl-arm.fl-e{top:31%;height:38%;right:-6px;width:calc(50% + 6px);}' +
+    '.fl-tipdot{position:absolute;left:50%;top:50%;width:64%;height:64%;border-radius:50%;' +
+      'border:3px solid color-mix(in srgb,var(--fl-deep) 85%,transparent);' +
+      'animation:fl-pulse 1.3s ease-in-out infinite;}' +
+    '@keyframes fl-pulse{0%,100%{transform:translate(-50%,-50%) scale(.88);opacity:.95;}' +
+      '50%{transform:translate(-50%,-50%) scale(1.04);opacity:.5;}}' +
+    '.fl-flower{position:relative;z-index:2;font-size:clamp(22px,8vw,42px);line-height:1;' +
+      'pointer-events:none;filter:drop-shadow(0 1px 1px color-mix(in srgb,var(--ink) 25%,transparent));}' +
+    '.fl-bloom{animation:fl-bloom .7s ease;}' +
+    '@keyframes fl-bloom{0%{transform:scale(1) rotate(0);}35%{transform:scale(1.35) rotate(-8deg);}' +
+      '70%{transform:scale(1.12) rotate(6deg);}100%{transform:scale(1) rotate(0);}}' +
+    '.fl-won .fl-cell{animation:fl-winpop .55s ease both;}' +
+    '.fl-won .fl-flower{animation:fl-bloom .8s ease both;}' +
+    '@keyframes fl-winpop{0%{transform:scale(1);}45%{transform:scale(1.1);}100%{transform:scale(1);}}';
+
+  function injectCss() {
+    if (document.getElementById(CSS_ID)) return;
+    var s = document.createElement('style');
+    s.id = CSS_ID;
+    s.textContent = CSS;
+    document.head.appendChild(s);
+  }
+
+  /* ---------- tiny helpers ---------- */
+  function same(c1, c2) { return c1[0] === c2[0] && c1[1] === c2[1]; }
+  function adjacent(c1, c2) {
+    return Math.abs(c1[0] - c2[0]) + Math.abs(c1[1] - c2[1]) === 1;
+  }
+  function mk(cls) {
+    var d = document.createElement('div');
+    d.className = cls;
+    return d;
+  }
+
+  App.registerGame({
+    id: 'flow',
+    get title() { return App.t('flow.title'); },
+    emoji: '🌸',
+    accent: 'var(--petal)',
+    get tagline() { return App.t('flow.tagline'); },
+    get howTo() { return App.t('flow.howTo'); },
+    levels: LEVELS,
+
+    start: function (board, level, api) {
+      injectCss();
+
+      var cols = level.cols;
+      var rows = level.rows;
+      /* deep-copy everything we play with; never touch `level` */
+      var pairs = level.pairs.map(function (p) {
+        return { icon: p.icon, fill: p.fill, deep: p.deep,
+                 a: p.a.slice(), b: p.b.slice() };
+      });
+      var blocked = {};
+      var blockedCount = 0;
+      (level.blocked || []).forEach(function (c) {
+        blocked[c[0] + ',' + c[1]] = true;
+        blockedCount++;
+      });
+      var openCount = cols * rows - blockedCount;
+
+      var paths = pairs.map(function () { return []; });
+      var active = -1;
+      var history = [];
+      var won = false;
+      var badTaps = 0;
+      var saidSoClose = false;
+      var saidAlmost = false;
+      var saidFirstJoin = false;
+      var timers = [];
+
+      function timer(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+      function endpointAt(x, y) {
+        for (var i = 0; i < pairs.length; i++) {
+          if (pairs[i].a[0] === x && pairs[i].a[1] === y) return { p: i };
+          if (pairs[i].b[0] === x && pairs[i].b[1] === y) return { p: i };
+        }
+        return null;
+      }
+      function ownerAt(x, y) {
+        for (var i = 0; i < paths.length; i++) {
+          for (var k = 0; k < paths[i].length; k++) {
+            if (paths[i][k][0] === x && paths[i][k][1] === y) return { p: i, k: k };
+          }
+        }
+        return null;
+      }
+      function indexInPath(p, x, y) {
+        for (var k = 0; k < p.length; k++) {
+          if (p[k][0] === x && p[k][1] === y) return k;
+        }
+        return -1;
+      }
+      function isConnected(i) {
+        var p = paths[i];
+        if (p.length < 2) return false;
+        var first = p[0], last = p[p.length - 1];
+        return (same(first, pairs[i].a) && same(last, pairs[i].b)) ||
+               (same(first, pairs[i].b) && same(last, pairs[i].a));
+      }
+      function snapshot() {
+        return {
+          active: active,
+          paths: paths.map(function (p) {
+            return p.map(function (c) { return c.slice(); });
+          })
+        };
+      }
+      function pushHistory() {
+        history.push(snapshot());
+        if (history.length > 250) history.shift();
+      }
+
+      /* ---------- build the board ---------- */
+      var wrap = mk('fl-board pg-pop');
+      wrap.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      wrap.style.maxWidth = Math.min(480, cols * 104) + 'px';
+
+      var cells = {};
+      (function build() {
+        for (var y = 0; y < rows; y++) {
+          for (var x = 0; x < cols; x++) {
+            var k = x + ',' + y;
+            var c = mk('fl-cell');
+            c.dataset.x = x;
+            c.dataset.y = y;
+            var entry = { el: c, way: null, flower: null, rock: false };
+            if (blocked[k]) {
+              entry.rock = true;
+              c.className = 'fl-cell fl-rock';
+              var r = document.createElement('span');
+              r.className = 'fl-flower fl-rockface';
+              r.textContent = '🪨';
+              c.appendChild(r);
+              c.setAttribute('aria-label', App.t('flow.aria.rest'));
+            } else {
+              var way = mk('fl-way');
+              c.appendChild(way);
+              entry.way = way;
+              var ep = endpointAt(x, y);
+              if (ep) {
+                c.style.setProperty('--fl-fill', pairs[ep.p].fill);
+                c.style.setProperty('--fl-deep', pairs[ep.p].deep);
+                var f = document.createElement('span');
+                f.className = 'fl-flower';
+                f.textContent = pairs[ep.p].icon;
+                c.appendChild(f);
+                entry.flower = f;
+                c.setAttribute('aria-label', App.t('flow.aria.flower', { icon: pairs[ep.p].icon }));
+              } else {
+                c.setAttribute('aria-label', App.t('flow.aria.tile'));
+              }
+              c.setAttribute('role', 'button');
+            }
+            cells[k] = entry;
+            wrap.appendChild(c);
+          }
+        }
+      })();
+      board.appendChild(wrap);
+
+      /* ---------- rendering ---------- */
+      function addArm(way, x, y, nb) {
+        if (!nb) return;
+        var dx = nb[0] - x, dy = nb[1] - y;
+        var dir = dy === -1 ? 'fl-n' : dy === 1 ? 'fl-s' : dx === 1 ? 'fl-e' : 'fl-w';
+        way.appendChild(mk('fl-arm ' + dir));
+      }
+
+      function render() {
+        for (var y = 0; y < rows; y++) {
+          for (var x = 0; x < cols; x++) {
+            var entry = cells[x + ',' + y];
+            if (entry.rock) continue;
+            var own = ownerAt(x, y);
+            var ep = endpointAt(x, y);
+            var cls = 'fl-cell';
+            if (ep) cls += ' fl-end';
+            if (own) cls += ' fl-lit';
+            if ((own && own.p === active) || (ep && ep.p === active)) cls += ' fl-on';
+            entry.el.className = cls;
+            var pi = own ? own.p : (ep ? ep.p : -1);
+            if (pi >= 0) {
+              entry.el.style.setProperty('--fl-fill', pairs[pi].fill);
+              entry.el.style.setProperty('--fl-deep', pairs[pi].deep);
+            }
+            entry.way.textContent = '';
+            if (own) {
+              var p = paths[own.p];
+              addArm(entry.way, x, y, p[own.k - 1]);
+              addArm(entry.way, x, y, p[own.k + 1]);
+              entry.way.appendChild(mk('fl-core'));
+              if (own.p === active && own.k === p.length - 1 && !isConnected(active)) {
+                entry.way.appendChild(mk('fl-tipdot'));
+              }
+            }
+          }
+        }
+      }
+
+      /* ---------- feedback ---------- */
+      function buzz(el) {
+        api.sound.bad();
+        el.classList.add('pg-shake');
+        timer(function () { el.classList.remove('pg-shake'); }, 420);
+      }
+      function noteBad() {
+        badTaps++;
+        if (badTaps >= 3) {
+          badTaps = 0;
+          api.say(App.t('flow.hint.beside'));
+        }
+      }
+      function bloomPair(i) {
+        [pairs[i].a, pairs[i].b].forEach(function (c) {
+          var entry = cells[c[0] + ',' + c[1]];
+          if (!entry || !entry.flower) return;
+          entry.flower.classList.remove('fl-bloom');
+          void entry.flower.offsetWidth;
+          entry.flower.classList.add('fl-bloom');
+          timer(function () { entry.flower.classList.remove('fl-bloom'); }, 800);
+        });
+      }
+      function celebrate() {
+        for (var y = 0; y < rows; y++) {
+          for (var x = 0; x < cols; x++) {
+            cells[x + ',' + y].el.style.animationDelay = ((x + y) * 45) + 'ms';
+          }
+        }
+        wrap.classList.add('fl-won');
+      }
+
+      function checkState() {
+        var connCount = 0, covered = 0;
+        for (var i = 0; i < pairs.length; i++) {
+          if (isConnected(i)) connCount++;
+          covered += paths[i].length;
+        }
+        if (connCount === pairs.length) {
+          if (covered === openCount) {
+            won = true;
+            celebrate();
+            api.win();
+            return;
+          }
+          if (!saidSoClose) {
+            saidSoClose = true;
+            api.say(App.t('flow.hint.longer'));
+          }
+        } else {
+          saidSoClose = false;
+          if (api.levelIndex === 0 && connCount === 1 && !saidFirstJoin) {
+            saidFirstJoin = true;
+            api.say(App.t('flow.hint.otherPair'));
+          } else if (pairs.length >= 3 && connCount === pairs.length - 1 && !saidAlmost) {
+            saidAlmost = true;
+            api.say(App.t('flow.hint.onePair'));
+          }
+        }
+      }
+
+      function afterChange() {
+        badTaps = 0;
+        render();
+        checkState();
+      }
+
+      /* ---------- one shared press handler (tap and drag) ---------- */
+      function pressCell(x, y, viaDrag) {
+        if (won) return;
+        var k = x + ',' + y;
+        var entry = cells[k];
+        if (!entry) return;
+        if (blocked[k]) {
+          if (!viaDrag) { buzz(entry.el); noteBad(); }
+          return;
+        }
+        var ep = endpointAt(x, y);
+
+        if (active >= 0) {
+          var p = paths[active];
+          var tip = p[p.length - 1];
+          var inOwn = indexInPath(p, x, y);
+          if (inOwn >= 0) {
+            /* own path: tapping the tip is a no-op; anywhere earlier trims
+               back to that tile (tapping the previous tile = one step back) */
+            if (inOwn === p.length - 1) {
+              if (!viaDrag) api.sound.tap();
+              return;
+            }
+            pushHistory();
+            paths[active] = p.slice(0, inOwn + 1);
+            api.sound.tap();
+            afterChange();
+            return;
+          }
+          if (tip && adjacent(tip, [x, y])) {
+            var mate = same(p[0], pairs[active].a) ? pairs[active].b : pairs[active].a;
+            if (ep && ep.p === active && same([x, y], mate)) {
+              /* reached the twin flower — connect! */
+              pushHistory();
+              paths[active] = p.concat([[x, y]]);
+              api.sound.good();
+              bloomPair(active);
+              afterChange();
+              return;
+            }
+            if (!ep && !isConnected(active)) {
+              /* extend; walking onto another pair's path gently trims it */
+              pushHistory();
+              var other = ownerAt(x, y);
+              if (other && other.p !== active) {
+                paths[other.p] = paths[other.p].slice(0, other.k);
+              }
+              paths[active] = p.concat([[x, y]]);
+              api.sound.place();
+              afterChange();
+              return;
+            }
+          }
+        }
+
+        if (ep) {
+          if (ep.p === active) {
+            /* the twin flower, tapped before the path reaches it */
+            if (!viaDrag) {
+              buzz(entry.el);
+              api.say(App.t('flow.hint.reach', { icon: pairs[ep.p].icon }));
+            }
+            return;
+          }
+          if (viaDrag) return; /* don't switch pairs mid-drag */
+          if (paths[ep.p].length === 0) {
+            pushHistory();
+            paths[ep.p] = [[x, y]];
+          }
+          active = ep.p;
+          api.sound.tap();
+          afterChange();
+          return;
+        }
+
+        if (!viaDrag) {
+          buzz(entry.el);
+          if (active < 0 && badTaps === 0) api.say(App.t('flow.hint.tapFirst'));
+          noteBad();
+        }
+      }
+
+      /* ---------- input: taps and drags on the board ---------- */
+      var dragging = false;
+      var dragId = null;
+      var lastKey = null;
+
+      wrap.addEventListener('pointerdown', function (e) {
+        if (won) return;
+        e.preventDefault();
+        var el = e.target && e.target.closest ? e.target.closest('.fl-cell') : null;
+        if (!el) return;
+        var x = +el.dataset.x, y = +el.dataset.y;
+        dragging = true;
+        dragId = e.pointerId;
+        lastKey = x + ',' + y;
+        try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+        pressCell(x, y, false);
+      });
+      wrap.addEventListener('pointermove', function (e) {
+        if (!dragging || e.pointerId !== dragId || won) return;
+        var el = document.elementFromPoint(e.clientX, e.clientY);
+        var cellEl = el && el.closest ? el.closest('.fl-cell') : null;
+        if (!cellEl || cellEl.dataset.x === undefined) return;
+        var k = cellEl.dataset.x + ',' + cellEl.dataset.y;
+        if (k === lastKey) return;
+        lastKey = k;
+        pressCell(+cellEl.dataset.x, +cellEl.dataset.y, true);
+      });
+      function endDrag() { dragging = false; dragId = null; lastKey = null; }
+      wrap.addEventListener('pointerup', endDrag);
+      wrap.addEventListener('pointercancel', endDrag);
+
+      /* ---------- toolbar ---------- */
+      api.button(App.t('ui.undo'), function () {
+        if (won) return;
+        if (!history.length) {
+          api.sound.tap();
+          api.say(App.t('flow.hint.undoEmpty'));
+          return;
+        }
+        var s = history.pop();
+        active = s.active;
+        paths = s.paths.map(function (p) {
+          return p.map(function (c) { return c.slice(); });
+        });
+        api.sound.tap();
+        render();
+      });
+      api.button(App.t('ui.restart'), function () {
+        if (won) return;
+        var hadProgress = paths.some(function (p) { return p.length > 0; });
+        paths = pairs.map(function () { return []; });
+        active = -1;
+        history = [];
+        saidSoClose = false;
+        api.sound.slide();
+        if (hadProgress) api.say(App.t('flow.hint.fresh'));
+        render();
+      });
+
+      /* ---------- first paint + a warm word where it helps ---------- */
+      render();
+      if (api.levelIndex === 0) {
+        api.say(App.t('flow.hint.teach'));
+      } else if (blockedCount > 0) {
+        api.say(App.t('flow.hint.stone'));
+      }
+
+      return function cleanup() {
+        timers.forEach(clearTimeout);
+        timers.length = 0;
+      };
+    }
+  });
+})();
+
+
+/* ================================================== */
+
+/* ============================================================
+   Puzzle Garden — Stone Steps 🐾
+   Walk the kitty across every stone exactly once. Stones bloom
+   as she hops. A gentle Hamiltonian-path puzzle.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  var FLOWERS = ['🌸', '🌼', '🌷', '🪻', '💮', '🌻'];
+
+  /* ------------------------------------------------------------
+     Levels. Grids drawn with X = stone, . = grass (no stone).
+     Coordinates are [col, row]. `solution` is one verified full
+     walk (adjacent hops, every stone once, from `start` when
+     start is fixed). Levels 1–5: free start. 6–8: fixed start.
+     ------------------------------------------------------------ */
+  var LEVELS = [
+
+    /* 1 · Little path — 3×2, 6 stones, start anywhere.
+       X X X
+       X X X                                                     */
+    {
+      cols: 3, rows: 2,
+      cells: [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]],
+      start: null,
+      solution: [[0, 0], [1, 0], [2, 0], [2, 1], [1, 1], [0, 1]]
+    },
+
+    /* 2 · Garden bed — 4×2, 8 stones, start anywhere.
+       X X X X
+       X X X X                                                   */
+    {
+      cols: 4, rows: 2,
+      cells: [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1], [3, 1]],
+      start: null,
+      solution: [[0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [2, 1], [1, 1], [0, 1]]
+    },
+
+    /* ------------------------------------------------------------
+       Ruins stones, like in Staff x Sword:
+       — Stepping on an UNLIT stone lights it; stepping on a LIT
+         stone puts it back out (toggle). Win = ALL lit at once.
+       — `arrows` {'x,y':'N'|'E'|'S'|'W'}: directional stones — always
+         walkable from any side. When UNLIT they light only if entered
+         moving in the arrow's direction ('E' = entered from the west
+         neighbor); other entries are inert. When LIT, stepping on
+         them from ANY direction puts them back out.
+       — `twice` [[x,y],…]: twin-chevron ‹› stones — steps go
+         0→1→2 (full); stepping on a full one dims it back to 1.
+       `solution` is one verified legal step sequence ending with
+       every stone fully lit.
+       ------------------------------------------------------------ */
+
+    /* 3 · Meet the arrow — the cozy 3×2, one directional stone at
+       [1,0]: it only lights for a kitty hopping east (from its left).
+       X →X X
+       X  X X                                                    */
+    {
+      cols: 3, rows: 2,
+      cells: [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]],
+      start: null,
+      arrows: { '1,0': 'E' },
+      solution: [[0, 1], [0, 0], [1, 0], [2, 0], [2, 1], [1, 1]]
+    },
+
+    /* 4 · Arrow alley — 4×2, an east arrow and a west arrow steer
+       the walk into a loop. Start anywhere.
+       X →X X  X
+       X  X ←X X                                                 */
+    {
+      cols: 4, rows: 2,
+      cells: [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1], [3, 1]],
+      start: null,
+      arrows: { '1,0': 'E', '2,1': 'W' },
+      solution: [[1, 1], [0, 1], [0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [2, 1]]
+    },
+
+    /* 5 · The pond ring — the ring again, now with a down arrow and
+       an up arrow: walk it clockwise. Start anywhere.
+       X X X  X
+       ↑X . . ↓X
+       X X X  X                                                  */
+    {
+      cols: 4, rows: 3,
+      cells: [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [3, 1], [0, 2], [1, 2], [2, 2], [3, 2]],
+      start: null,
+      arrows: { '3,1': 'S', '0,1': 'N' },
+      solution: [[0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [3, 2], [2, 2], [1, 2], [0, 2], [0, 1]]
+    },
+
+    /* 6 · The twin-arrow stone — ‹› stone [0,1] wants TWO visits:
+       hop on, hop away, come back. Start anywhere.
+       X  X
+       ‹› X
+       X  X                                                      */
+    {
+      cols: 2, rows: 3,
+      cells: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]],
+      start: null,
+      twice: [[0, 1]],
+      solution: [[1, 0], [0, 0], [0, 1], [1, 1], [1, 2], [0, 2], [0, 1]]
+    },
+
+    /* 7 · Around the pond — 3×3 ring, the ‹› stone on top: walk the
+       whole ring and come home to finish its bloom. Start anywhere.
+       X ‹› X
+       X .  X
+       X X  X                                                    */
+    {
+      cols: 3, rows: 3,
+      cells: [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2]],
+      start: null,
+      twice: [[1, 0]],
+      solution: [[1, 0], [2, 0], [2, 1], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0], [1, 0]]
+    },
+
+    /* 8 · The old ruin ring — arrows and a ‹› stone together.
+       Fixed start ON the ‹› stone; the arrows light clockwise.
+       X ‹›S X
+       ↑X .  ↓X
+       X  X  X                                                   */
+    {
+      cols: 3, rows: 3,
+      cells: [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2]],
+      start: [1, 0],
+      arrows: { '2,1': 'S', '0,1': 'N' },
+      twice: [[1, 0]],
+      solution: [[1, 0], [2, 0], [2, 1], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0], [1, 0]]
+    },
+
+    /* 9 · The little crossroads — no specials, but the T shape
+       forces re-crossing: put stones back out, then relight them.
+       X X X
+       . X .
+       . X .                                                     */
+    {
+      cols: 3, rows: 3,
+      cells: [[0, 0], [1, 0], [2, 0], [1, 1], [1, 2]],
+      start: null,
+      solution: [[2, 0], [1, 0], [0, 0], [1, 0], [1, 1], [1, 2], [1, 1], [1, 0], [1, 1]]
+    },
+
+    /* 10 · The pond, revisited — 4×3 ring with a ‹› stone and an
+        entry-arrow that only opens from above. Start anywhere.
+        X  X X  X
+        ‹› . .  ↓X
+        X  X X  X                                                */
+    {
+      cols: 4, rows: 3,
+      cells: [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [3, 1], [0, 2], [1, 2], [2, 2], [3, 2]],
+      start: null,
+      twice: [[0, 1]],
+      arrows: { '3,1': 'S' },
+      solution: [[0, 1], [0, 0], [1, 0], [2, 0], [3, 0], [3, 1],
+                 [3, 2], [2, 2], [1, 2], [0, 2], [0, 1]]
+    },
+
+    /* 11 · The rounded court — ‹› stone in the courtyard, an arrow
+        gate on the east wing, and one relight to finish. Fixed
+        start at [2,3].
+        .  X  X .
+        X ‹›X X →X
+        X  X  X X
+        .  X  S .                                                */
+    {
+      cols: 4, rows: 4,
+      cells: [[1, 0], [2, 0],
+              [0, 1], [1, 1], [2, 1], [3, 1],
+              [0, 2], [1, 2], [2, 2], [3, 2],
+              [1, 3], [2, 3]],
+      start: [2, 3],
+      twice: [[1, 1]],
+      arrows: { '3,1': 'E' },
+      solution: [[2, 3], [1, 3], [1, 2], [0, 2], [0, 1], [1, 1], [1, 0], [2, 0],
+                 [2, 1], [3, 1], [3, 2], [2, 2], [1, 2], [1, 1], [1, 2]]
+    },
+
+    /* 12 · The winding stair — the finale: two entry-arrows, a ‹›
+        stone mid-stair, and a final toggle-and-relight. Fixed
+        start at [4,3].
+        ←X X  X  .  .
+        X  X  X  X  .
+        .  X ‹›X X ↑X
+        .  .  X  X  S                                            */
+    {
+      cols: 5, rows: 4,
+      cells: [[0, 0], [1, 0], [2, 0],
+              [0, 1], [1, 1], [2, 1], [3, 1],
+              [1, 2], [2, 2], [3, 2], [4, 2],
+              [2, 3], [3, 3], [4, 3]],
+      start: [4, 3],
+      twice: [[2, 2]],
+      arrows: { '4,2': 'N', '0,1': 'W' },
+      solution: [[4, 3], [4, 2], [3, 2], [3, 3], [2, 3], [2, 2], [1, 2], [1, 1],
+                 [0, 1], [0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [2, 1], [2, 2], [2, 1]]
+    }
+  ];
+
+  function injectCss() {
+    if (document.getElementById('steps-css')) return;
+    var css = [
+      '.st-grid{display:grid;gap:clamp(4px,1.5vw,10px);margin:0 auto;touch-action:none;',
+      '  user-select:none;-webkit-user-select:none;}',
+      '.st-gap{aspect-ratio:1;visibility:hidden;}',
+      '.st-stone{position:relative;aspect-ratio:1;width:100%;padding:0;cursor:pointer;',
+      '  border:2px solid var(--line);border-radius:24%;',
+      '  background:color-mix(in srgb, var(--soft) 12%, var(--card));',
+      '  box-shadow:inset 0 -4px 0 color-mix(in srgb, var(--ink) 8%, transparent);',
+      '  transition:background .2s ease,border-color .2s ease,box-shadow .25s ease,transform .1s ease;',
+      '  touch-action:none;}',
+      '.st-stone::before{content:"";position:absolute;inset:16%;border-radius:50%;',
+      '  background:radial-gradient(circle at 30% 32%, color-mix(in srgb, var(--ink) 8%, transparent) 0 13%, transparent 14%),',
+      '  radial-gradient(circle at 66% 62%, color-mix(in srgb, var(--ink) 8%, transparent) 0 9%, transparent 10%);}',
+      '.st-stone:active{transform:scale(.95);}',
+      '.st-choose{border-color:color-mix(in srgb, var(--sky-deep) 45%, var(--line));',
+      '  animation:st-breathe 2.4s ease-in-out infinite;}',
+      '@keyframes st-breathe{0%,100%{transform:scale(1);}50%{transform:scale(1.035);}}',
+      /* lit = a clear, unmistakable light blue (mixed toward the deep partner,
+         not just white) so the state reads at a glance for older eyes */
+      '.st-lit{background:color-mix(in srgb, var(--sky) 76%, var(--sky-deep));border-color:var(--sky-deep);',
+      '  box-shadow:0 0 18px color-mix(in srgb, var(--sky) 78%, transparent),',
+      '  inset 0 -5px 0 color-mix(in srgb, var(--sky-deep) 34%, transparent);}',
+      /* the current stone shows nothing but its TRUE lit/unlit state —
+         the kitty herself is the only "you are here" marker */
+      '.st-bloom{position:absolute;inset:0;display:grid;place-items:center;',
+      '  pointer-events:none;line-height:1;}',
+      '.st-bloom{font-size:clamp(20px,6.5vw,34px);opacity:0;transform:scale(.2) rotate(-25deg);',
+      '  transition:opacity .25s ease,transform .4s cubic-bezier(.34,1.56,.64,1);}',
+      '.st-lit .st-bloom{opacity:1;transform:scale(1) rotate(0deg);}',
+      '.st-cur .st-bloom{opacity:0;transform:scale(.4);}',
+      /* the kitty: one floating actor that glides from stone to stone */
+      '.st-actor{position:absolute;display:grid;place-items:center;pointer-events:none;',
+      '  font-size:clamp(24px,7.5vw,40px);line-height:1;z-index:3;',
+      '  transition:left .18s ease,top .18s ease;}',
+      '.st-hop{animation:st-hop .32s ease;}',
+      '@keyframes st-hop{0%{transform:translateY(-38%) scale(.85);}',
+      '  55%{transform:translateY(8%) scale(1.05);}100%{transform:translateY(0) scale(1);}}',
+      '.st-won .st-stone{animation:st-party .55s ease both;}',
+      '@keyframes st-party{0%{transform:scale(1);}45%{transform:scale(1.13) rotate(3deg);}100%{transform:scale(1);}}',
+      '.st-won .st-cur{box-shadow:0 0 22px color-mix(in srgb, var(--butter) 70%, transparent);}',
+      '.st-won .st-cur::after{content:"✨";position:absolute;top:-12px;right:-8px;font-size:20px;}',
+      /* one-way arrow stones */
+      '.st-mark{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;line-height:1;}',
+      '.st-arrow{font-size:clamp(16px,5vw,26px);font-weight:700;color:var(--butter-deep);opacity:.9;',
+      '  transition:opacity .3s ease;}',
+      '.st-arrow.n{transform:rotate(-90deg);}',
+      '.st-arrow.e{transform:rotate(0deg);}',
+      '.st-arrow.s{transform:rotate(90deg);}',
+      '.st-arrow.w{transform:rotate(180deg);}',
+      '.st-lit .st-arrow{opacity:0;}',
+      /* hide the arrow while the kitty stands on it — she can move any way;
+         it reappears (static) when she leaves, showing how to relight it */
+      '.st-cur .st-arrow{opacity:0;}',
+      /* twin-arrow (visit twice) stones */
+      '.st-twin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;',
+      '  gap:2%;pointer-events:none;transform:rotate(-24deg);font-weight:700;',
+      '  font-size:clamp(14px,4.5vw,24px);transition:opacity .3s ease;}',
+      '.st-twin span{color:var(--soft);opacity:.5;transition:color .25s ease,opacity .25s ease,text-shadow .25s ease;}',
+      /* stacked diagonally into a zigzag, like the ruins tiles in Staff x Sword */
+      '.st-twin span:first-child{transform:translateY(-28%);}',
+      '.st-twin span:last-child{transform:translateY(28%);}',
+      '.st-twin span.on{color:var(--butter-deep);opacity:1;',
+      '  text-shadow:0 0 8px color-mix(in srgb, var(--butter) 70%, transparent);}',
+      '.st-half{background:color-mix(in srgb, var(--sky) 52%, var(--card));',
+      '  border-color:color-mix(in srgb, var(--sky-deep) 60%, var(--line));}',
+      '.st-lit .st-twin{opacity:0;}',
+      '.st-cur .st-twin{opacity:1;}'
+    ].join('\n');
+    var tag = document.createElement('style');
+    tag.id = 'steps-css';
+    tag.textContent = css;
+    document.head.appendChild(tag);
+  }
+
+  App.registerGame({
+    id: 'steps',
+    get title() { return App.t('steps.title'); },
+    emoji: '🐾',
+    accent: 'var(--sky)',
+    get tagline() { return App.t('steps.tagline'); },
+    get howTo() { return App.t('steps.howTo'); },
+    levels: LEVELS,
+
+    start: function (board, level, api) {
+      injectCss();
+
+      var cols = level.cols;
+      var rows = level.rows;
+      var cells = level.cells.map(function (c) { return [c[0], c[1]]; });
+      var fixedStart = level.start ? [level.start[0], level.start[1]] : null;
+      var total = cells.length;
+
+      var cellSet = {};
+      cells.forEach(function (c) { cellSet[c[0] + ',' + c[1]] = true; });
+
+      var arrows = level.arrows || {};
+      var twiceSet = {};
+      (level.twice || []).forEach(function (c) { twiceSet[c[0] + ',' + c[1]] = true; });
+
+      function needOf(k) { return twiceSet[k] ? 2 : 1; }
+      /* toggle rules: normal stones flip 0↔1; ‹› stones go 0→1→2,
+         and stepping on a full one dims it back to 1 */
+      function nextState(k, s) {
+        if (twiceSet[k]) return s === 0 ? 1 : (s === 1 ? 2 : 1);
+        return s === 1 ? 0 : 1;
+      }
+      function computeStates() {
+        var st = {};
+        cells.forEach(function (c) { st[c[0] + ',' + c[1]] = 0; });
+        for (var i = 0; i < path.length; i++) {
+          var pk = path[i];
+          if (arrows[pk]) {
+            /* directional stones: when LIT, any step puts them back out;
+               when UNLIT, they light only if entered along the arrow */
+            if (st[pk] >= 1) { st[pk] = 0; continue; }
+            if (i === 0) continue;
+            if (pk !== neighborKey(path[i - 1], arrows[pk])) continue;
+            st[pk] = 1;
+            continue;
+          }
+          st[pk] = nextState(pk, st[pk]);
+        }
+        return st;
+      }
+      function neighborKey(k, dir) {
+        var p = parseKey(k);
+        if (dir === 'N') return p[0] + ',' + (p[1] - 1);
+        if (dir === 'S') return p[0] + ',' + (p[1] + 1);
+        if (dir === 'E') return (p[0] + 1) + ',' + p[1];
+        return (p[0] - 1) + ',' + p[1];
+      }
+
+      var stones = {};      // key -> button element
+      var path = [];        // keys, in walk order
+      var solved = false;
+      var walking = false;  // auto-walk in progress
+      var walkTimer = null;
+      var saidClose = false;
+      var saidFirstHop = false;
+      var saidComeBack = false;
+      var saidToggle = false;
+      var saidArrowMiss = false;
+      var timers = [];
+      var dragging = false;
+      var lastDragKey = null;
+
+      function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+      function parseKey(k) {
+        var p = k.split(',');
+        return [Number(p[0]), Number(p[1])];
+      }
+      function adjacent(k1, k2) {
+        var a = parseKey(k1);
+        var b = parseKey(k2);
+        return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) === 1;
+      }
+
+      /* ---------- build the board ---------- */
+      board.innerHTML = '';
+      var grid = document.createElement('div');
+      grid.className = 'st-grid';
+      grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      grid.style.maxWidth = Math.min(464, cols * 100) + 'px';
+      for (var y = 0; y < rows; y++) {
+        for (var x = 0; x < cols; x++) {
+          var k = x + ',' + y;
+          if (cellSet[k]) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'pg-tile st-stone';
+            b.dataset.key = k;
+            var ariaText = App.t('steps.aria.stone', { x: x + 1, y: y + 1 });
+            if (arrows[k]) ariaText += App.t('steps.aria.oneWay');
+            if (twiceSet[k]) ariaText += App.t('steps.aria.twiceStone');
+            b.setAttribute('aria-label', ariaText);
+            b.setAttribute('aria-pressed', 'false');
+            var bloom = document.createElement('span');
+            bloom.className = 'st-bloom';
+            b.appendChild(bloom);
+            if (arrows[k]) {
+              var mark = document.createElement('span');
+              mark.className = 'st-mark';
+              var ar = document.createElement('span');
+              ar.className = 'st-arrow ' + arrows[k].toLowerCase();
+              ar.textContent = '→';
+              mark.appendChild(ar);
+              b.appendChild(mark);
+            }
+            if (twiceSet[k]) {
+              var twin = document.createElement('span');
+              twin.className = 'st-twin';
+              var t1 = document.createElement('span');
+              t1.textContent = '❮';
+              var t2 = document.createElement('span');
+              t2.textContent = '❯';
+              twin.appendChild(t1);
+              twin.appendChild(t2);
+              b.appendChild(twin);
+            }
+            grid.appendChild(b);
+            stones[k] = b;
+          } else {
+            var gap = document.createElement('div');
+            gap.className = 'st-gap';
+            grid.appendChild(gap);
+          }
+        }
+      }
+      board.appendChild(grid);
+
+      /* ---------- the kitty actor: always standing on the current stone ---------- */
+      grid.style.position = 'relative';
+      var catEl = document.createElement('div');
+      catEl.className = 'st-actor';
+      catEl.textContent = '🐱';
+      catEl.setAttribute('aria-hidden', 'true');
+      grid.appendChild(catEl);
+
+      function placeCat() {
+        var lastK = path.length ? path[path.length - 1] : null;
+        if (!lastK) { catEl.style.display = 'none'; return; }
+        var st = stones[lastK];
+        catEl.style.display = '';
+        catEl.style.left = st.offsetLeft + 'px';
+        catEl.style.top = st.offsetTop + 'px';
+        catEl.style.width = st.offsetWidth + 'px';
+        catEl.style.height = st.offsetHeight + 'px';
+      }
+      window.addEventListener('resize', placeCat);
+
+      /* ---------- state -> screen ---------- */
+      function refresh() {
+        var chooseMode = path.length === 0;
+        var lastK = path.length ? path[path.length - 1] : null;
+        var states = computeStates();
+        var lastVisit = {};
+        path.forEach(function (pk, i) { lastVisit[pk] = i; });
+        cells.forEach(function (c) {
+          var ck = c[0] + ',' + c[1];
+          var st = stones[ck];
+          var v = states[ck];
+          var n = needOf(ck);
+          st.classList.toggle('st-lit', v >= n);
+          st.classList.toggle('st-half', n === 2 && v === 1);
+          st.classList.toggle('st-cur', ck === lastK);
+          st.classList.toggle('st-choose', chooseMode);
+          st.setAttribute('aria-pressed', v >= n ? 'true' : 'false');
+          if (v > 0) {
+            st.querySelector('.st-bloom').textContent = FLOWERS[lastVisit[ck] % FLOWERS.length];
+          }
+          var twin = st.querySelector('.st-twin');
+          if (twin) {
+            twin.children[0].classList.toggle('on', v >= 1);
+            twin.children[1].classList.toggle('on', v >= 2);
+          }
+        });
+        placeCat();
+      }
+
+      function hopAnim() {
+        catEl.classList.remove('st-hop');
+        void catEl.offsetWidth;
+        catEl.classList.add('st-hop');
+        later(function () { catEl.classList.remove('st-hop'); }, 360);
+      }
+
+      /* ---------- rules ---------- */
+
+      function encourage() {
+        var states = computeStates();
+        var remaining = 0;
+        cells.forEach(function (c) {
+          var ck = c[0] + ',' + c[1];
+          if (states[ck] !== needOf(ck)) remaining++;
+        });
+        if (api.levelIndex === 0 && path.length === 2 && !saidFirstHop) {
+          saidFirstHop = true;
+          api.say(App.t('steps.msg.firstHop'));
+        } else if (remaining === 2 && !saidClose) {
+          saidClose = true;
+          api.say(App.t('steps.msg.twoLeft'));
+        }
+      }
+
+      function celebrate() {
+        grid.classList.add('st-won');
+        path.forEach(function (pk, i) {
+          stones[pk].style.animationDelay = (i * 60) + 'ms';
+        });
+      }
+
+      function doStep(k) {
+        var before = computeStates()[k];
+        path.push(k);
+        var states = computeStates();
+        var now = states[k];
+        refresh();
+        hopAnim();
+
+        var allLit = cells.every(function (c) {
+          var ck = c[0] + ',' + c[1];
+          return states[ck] === needOf(ck);
+        });
+        if (allLit) {
+          solved = true;
+          celebrate();
+          api.win();
+          return;
+        }
+
+        if (now < before) {                // stepped a lit stone back out
+          api.sound.slide();
+          if (!saidToggle) {
+            saidToggle = true;
+            api.say(App.t('steps.msg.toggle'));
+          }
+        } else if (now === before) {       // inert crossing of a directional stone
+          api.sound.tap();
+          if (now === 0 && !saidArrowMiss) {
+            saidArrowMiss = true;
+            api.say(App.t('steps.msg.arrowMiss'));
+          }
+        } else {
+          api.sound.place();
+          if (twiceSet[k] && before === 0 && !saidComeBack) {
+            saidComeBack = true;
+            api.say(App.t('steps.msg.comeBack'));
+          }
+        }
+        encourage();
+      }
+
+      /* ---------- auto-walk: tap a far stone and the kitty strolls over ---------- */
+      function stopWalk() {
+        if (walkTimer !== null) { clearTimeout(walkTimer); walkTimer = null; }
+        walking = false;
+      }
+
+      function bfsPath(fromK, toK) {
+        var prev = {};
+        prev[fromK] = null;
+        var queue = [fromK];
+        var head = 0;
+        while (head < queue.length) {
+          var cur = queue[head++];
+          if (cur === toK) break;
+          var p = parseKey(cur);
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+            var nk = (p[0] + d[0]) + ',' + (p[1] + d[1]);
+            if (cellSet[nk] && !(nk in prev)) { prev[nk] = cur; queue.push(nk); }
+          });
+        }
+        if (!(toK in prev)) return null;
+        var route = [];
+        for (var c = toK; c !== null; c = prev[c]) route.unshift(c);
+        return route;                      // includes fromK
+      }
+
+      function autoWalk(route) {           // route excludes the current stone
+        walking = true;
+        var i = 0;
+        function stepNext() {
+          walkTimer = null;
+          doStep(route[i]);
+          i++;
+          if (i < route.length && !solved) {
+            walkTimer = setTimeout(stepNext, 200);
+            timers.push(walkTimer);
+          } else {
+            walking = false;
+          }
+        }
+        stepNext();
+      }
+
+      function undoStep() {
+        if (solved) return;
+        stopWalk();
+        var minLen = fixedStart ? 1 : 0;
+        if (path.length <= minLen) { api.sound.tap(); return; }
+        path.pop();
+        refresh();
+        api.sound.slide();
+      }
+
+      function restart() {
+        if (solved) return;
+        stopWalk();
+        path = fixedStart ? [fixedStart[0] + ',' + fixedStart[1]] : [];
+        refresh();
+        api.sound.slide();
+      }
+
+      function tapStone(k, fromDrag) {
+        if (solved || walking || !cellSet[k]) return;
+
+        if (path.length === 0) {           // free start: any stone at all
+          path.push(k);
+          refresh();
+          hopAnim();
+          api.sound.place();
+          if (api.levelIndex === 0) {
+            api.say(App.t('steps.msg.thereShe'));
+          } else if (arrows[k]) {          // it will not light from a standing start
+            api.say(App.t('steps.msg.arrowMiss'));
+            saidArrowMiss = true;
+          }
+          return;
+        }
+
+        var lastK = path[path.length - 1];
+        if (k === lastK) {                 // patting the kitty is always fine
+          if (!fromDrag) {
+            api.sound.tap();
+            hopAnim();
+            if (twiceSet[k] && computeStates()[k] < 2) api.say(App.t('steps.msg.comeBack'));
+          }
+          return;
+        }
+
+        if (adjacent(k, lastK)) {
+          doStep(k);                       // always walkable; lighting rules decide the rest
+          return;
+        }
+
+        if (fromDrag) return;              // drags only walk stone by stone
+
+        var route = bfsPath(lastK, k);     // farther away: stroll over, stone by stone
+        if (route && route.length > 1) autoWalk(route.slice(1));
+      }
+
+      /* ---------- input: taps, drags, keyboard ---------- */
+      function onPointerDown(e) {
+        dragging = true;
+        try { grid.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+        var st = e.target && e.target.closest ? e.target.closest('.st-stone') : null;
+        if (st && st.dataset.key) {
+          lastDragKey = st.dataset.key;
+          tapStone(st.dataset.key, false);
+        } else {
+          lastDragKey = null;
+        }
+      }
+      function onPointerMove(e) {
+        if (!dragging || solved) return;
+        var elx = document.elementFromPoint(e.clientX, e.clientY);
+        var st = elx && elx.closest ? elx.closest('.st-stone') : null;
+        if (!st || !st.dataset.key) return;
+        var k = st.dataset.key;
+        if (k === lastDragKey) return;
+        lastDragKey = k;
+        tapStone(k, true);
+      }
+      function endDrag() { dragging = false; lastDragKey = null; }
+      function onKeyClick(e) {
+        if (e.detail !== 0) return;        // keyboard activation only
+        var st = e.target && e.target.closest ? e.target.closest('.st-stone') : null;
+        if (st && st.dataset.key) tapStone(st.dataset.key, false);
+      }
+      grid.addEventListener('pointerdown', onPointerDown);
+      grid.addEventListener('pointermove', onPointerMove);
+      grid.addEventListener('pointerup', endDrag);
+      grid.addEventListener('pointercancel', endDrag);
+      grid.addEventListener('click', onKeyClick);
+
+      /* ---------- toolbar ---------- */
+      api.button(App.t('ui.undo'), undoStep);
+      api.button(App.t('ui.restart'), restart);
+
+      /* ---------- go ---------- */
+      path = fixedStart ? [fixedStart[0] + ',' + fixedStart[1]] : [];
+      refresh();
+      if (api.levelIndex === 0) {
+        api.say(App.t('steps.msg.anyStone'));
+      } else if (api.levelIndex === 2) {
+        api.say(App.t('steps.msg.arrowIntro'));
+      } else if (api.levelIndex === 5) {
+        api.say(App.t('steps.msg.twiceIntro'));
+      } else if (fixedStart && api.levelIndex === 7) {
+        api.say(App.t('steps.msg.ownSpot'));
+      }
+
+      return function cleanup() {
+        stopWalk();
+        timers.forEach(clearTimeout);
+        window.removeEventListener('resize', placeCat);
+      };
+    }
+  });
+})();
+
+
+/* ================================================== */
+
+/* ============================================================
+   Puzzle Garden — game 3 · Lantern Lines 🏮   (games/pipes.js)
+
+   Tap two slabs to swap them until the golden wire runs
+   unbroken from the sun stone ☀️ to every lantern 🏮.
+
+   Level data is the SOLVED arrangement; the game scrambles it
+   at load with `shuffles` random swaps among unlocked cells.
+
+   Conventions used by this file (and its level data):
+   - `grid` is row-major, length cols*rows; null = hole (not
+     part of the board, never rendered, never swapped).
+   - `c` is the tile's openings, a subset of 'NESW'
+     (N = up / row-1, E = right / col+1, S = down, W = left).
+   - `locked` entries are [col, row] pairs — cells that cannot
+     be swapped (anchors; the source is always locked here).
+   - Solved-state invariants (verification): exactly one
+     'source', at least one 'lamp', every opening meets a
+     matching opening on its neighbor (none faces a wall, hole
+     or board edge), and all non-null cells form ONE connected
+     network. The game recomputes the win itself, so any valid
+     arrangement counts, not only the stored one.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* ---------- injected styles (tokens only → light + dark both work) ---------- */
+  var CSS = [
+    '.pi-board{display:grid;gap:clamp(4px,1.5vw,10px);margin:0 auto;touch-action:none;}',
+    '.pi-cell.pi-drag .pi-slab{box-shadow:0 10px 22px rgba(0,0,0,0.28);}',
+    '.pi-hole{aspect-ratio:1;}',
+    '.pi-cell{position:relative;aspect-ratio:1;padding:0;border:none;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent;}',
+    '.pi-slab{position:absolute;inset:0;border-radius:22%;border:2px solid var(--line);background:var(--card);',
+    '  transition:transform .16s ease,box-shadow .16s ease,background .25s ease,border-color .25s ease;}',
+    '.pi-cell:active .pi-slab{transform:scale(.97);}',
+    '.pi-slab.pi-powered{background:color-mix(in srgb,var(--butter) 18%,var(--card));',
+    '  border-color:color-mix(in srgb,var(--butter-deep) 55%,var(--line));',
+    '  box-shadow:0 0 12px color-mix(in srgb,var(--butter) 60%,transparent);}',
+    '.pi-slab.pi-locked{background:color-mix(in srgb,var(--leaf) 24%,var(--card-soft));',
+    '  border-color:color-mix(in srgb,var(--leaf-deep) 40%,var(--line));}',
+    '.pi-slab.pi-lifted{transform:translateY(-4px) scale(1.07);',
+    '  box-shadow:0 0 0 3px var(--butter-deep),0 10px 16px color-mix(in srgb,var(--ink) 20%,transparent);z-index:3;}',
+    '.pi-wire{position:absolute;inset:0;width:100%;height:100%;display:block;}',
+    '.pi-wire path{stroke:color-mix(in srgb,var(--soft) 55%,var(--line));stroke-width:18;stroke-linecap:round;fill:none;}',
+    '.pi-wire circle{fill:color-mix(in srgb,var(--soft) 55%,var(--line));}',
+    '.pi-wire.pi-on{filter:drop-shadow(0 0 4px var(--butter));}',
+    '.pi-wire.pi-on path{stroke:var(--butter-deep);}',
+    '.pi-wire.pi-on circle{fill:var(--butter-deep);}',
+    '.pi-iconwrap{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;}',
+    '.pi-icon{font-size:clamp(22px,7vw,34px);line-height:1;}',
+    '.pi-sun{filter:drop-shadow(0 0 6px var(--glow));animation:pi-sun 2.6s ease-in-out infinite;}',
+    '.pi-lamp-dim{filter:grayscale(1);opacity:.45;}',
+    '.pi-lamp-lit{filter:drop-shadow(0 0 8px var(--butter));}',
+    '.pi-pop{animation:pi-pop .5s ease;}',
+    '.pi-moss{position:absolute;top:5%;left:7%;font-size:.7rem;opacity:.9;pointer-events:none;}',
+    '.pi-won .pi-slab{animation:pi-wave .9s ease;}',
+    '.pi-won .pi-lamp-lit{animation:pi-pop .6s ease;}',
+    '@keyframes pi-pop{0%{transform:scale(.5);}55%{transform:scale(1.25);}100%{transform:scale(1);}}',
+    '@keyframes pi-sun{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}',
+    '@keyframes pi-wave{0%{transform:scale(1);}45%{transform:scale(1.05);}100%{transform:scale(1);}}'
+  ].join('\n');
+
+  function injectCss() {
+    if (document.getElementById('pipes-css')) return;
+    var tag = document.createElement('style');
+    tag.id = 'pipes-css';
+    tag.textContent = CSS;
+    document.head.appendChild(tag);
+  }
+
+  /* ---------- directions ---------- */
+  var DIRS = ['N', 'E', 'S', 'W'];
+  var DIR = {
+    N: { dx: 0, dy: -1, opp: 'S', x2: 50, y2: 0 },
+    E: { dx: 1, dy: 0, opp: 'W', x2: 100, y2: 50 },
+    S: { dx: 0, dy: 1, opp: 'N', x2: 50, y2: 100 },
+    W: { dx: -1, dy: 0, opp: 'E', x2: 0, y2: 50 }
+  };
+
+  function pick(arr) { return arr[(Math.random() * arr.length) | 0]; }
+
+  function MOSS_MSGS() { return App.t('pipes.moss'); }
+  function RESTART_MSGS() { return App.t('pipes.restart'); }
+
+  /* ============================================================
+     LEVELS — each grid below is drawn in its comment exactly as
+     stored (row-major). ☀ marks the source, 🏮 marks lamps.
+     All coordinates in `locked` are [col, row].
+     ============================================================ */
+  var LEVELS = [
+
+    /* L1 · 3×3 snake — one golden path, one lantern. shuffles 3.
+       col→    0      1      2
+       row 0  ☀E     EW     SW
+       row 1   ES     EW     NW
+       row 2   NE     EW    🏮W
+       Path: (0,0)→(1,0)→(2,0)→(2,1)→(1,1)→(0,1)→(0,2)→(1,2)→(2,2). */
+    {
+      cols: 3, rows: 3,
+      grid: [
+        { c: 'E', kind: 'source' }, { c: 'EW', kind: 'wire' }, { c: 'SW', kind: 'wire' },
+        { c: 'ES', kind: 'wire' }, { c: 'EW', kind: 'wire' }, { c: 'NW', kind: 'wire' },
+        { c: 'NE', kind: 'wire' }, { c: 'EW', kind: 'wire' }, { c: 'W', kind: 'lamp' }
+      ],
+      locked: [[0, 0], [2, 2]],
+      shuffles: 3
+    },
+
+    /* L2 · 3×3 tree — sun in the middle, four lanterns. shuffles 4.
+       col→    0      1      2
+       row 0  🏮S    🏮S    🏮S
+       row 1   NE    ☀NEW    NSW
+       row 2  🏮E     EW     NW   */
+    {
+      cols: 3, rows: 3,
+      grid: [
+        { c: 'S', kind: 'lamp' }, { c: 'S', kind: 'lamp' }, { c: 'S', kind: 'lamp' },
+        { c: 'NE', kind: 'wire' }, { c: 'NEW', kind: 'source' }, { c: 'NSW', kind: 'wire' },
+        { c: 'E', kind: 'lamp' }, { c: 'EW', kind: 'wire' }, { c: 'NW', kind: 'wire' }
+      ],
+      locked: [[1, 1]],
+      shuffles: 4
+    },
+
+    /* L3 · 3×3 ring with a hole in the middle — a closed golden loop. shuffles 5.
+       col→    0      1      2
+       row 0  ☀ES    EW    🏮SW
+       row 1   NS     ·      NS      (· = hole)
+       row 2  🏮NE    EW     NW   */
+    {
+      cols: 3, rows: 3,
+      grid: [
+        { c: 'ES', kind: 'source' }, { c: 'EW', kind: 'wire' }, { c: 'SW', kind: 'lamp' },
+        { c: 'NS', kind: 'wire' }, null, { c: 'NS', kind: 'wire' },
+        { c: 'NE', kind: 'lamp' }, { c: 'EW', kind: 'wire' }, { c: 'NW', kind: 'wire' }
+      ],
+      locked: [[0, 0]],
+      shuffles: 5
+    },
+
+    /* L4 · 4×3 with two holes — a branching garden path, three lanterns. shuffles 6.
+       col→    0      1      2      3
+       row 0   ·     🏮S     ·     🏮S
+       row 1  ☀ES    NEW    ESW    NSW
+       row 2   NE    🏮W     NE     NW   */
+    {
+      cols: 4, rows: 3,
+      grid: [
+        null, { c: 'S', kind: 'lamp' }, null, { c: 'S', kind: 'lamp' },
+        { c: 'ES', kind: 'source' }, { c: 'NEW', kind: 'wire' }, { c: 'ESW', kind: 'wire' }, { c: 'NSW', kind: 'wire' },
+        { c: 'NE', kind: 'wire' }, { c: 'W', kind: 'lamp' }, { c: 'NE', kind: 'wire' }, { c: 'NW', kind: 'wire' }
+      ],
+      locked: [[0, 1]],
+      shuffles: 6
+    },
+
+    /* L5 · 4×4 full board — two loops and two far lanterns. shuffles 7.
+       col→    0      1      2      3
+       row 0  ☀ES    EW     ESW   🏮W
+       row 1   NS     ES     NEW    SW
+       row 2   NES    NW     ES     NW
+       row 3   NE     EW     NEW   🏮W   */
+    {
+      cols: 4, rows: 4,
+      grid: [
+        { c: 'ES', kind: 'source' }, { c: 'EW', kind: 'wire' }, { c: 'ESW', kind: 'wire' }, { c: 'W', kind: 'lamp' },
+        { c: 'NS', kind: 'wire' }, { c: 'ES', kind: 'wire' }, { c: 'NEW', kind: 'wire' }, { c: 'SW', kind: 'wire' },
+        { c: 'NES', kind: 'wire' }, { c: 'NW', kind: 'wire' }, { c: 'ES', kind: 'wire' }, { c: 'NW', kind: 'wire' },
+        { c: 'NE', kind: 'wire' }, { c: 'EW', kind: 'wire' }, { c: 'NEW', kind: 'wire' }, { c: 'W', kind: 'lamp' }
+      ],
+      locked: [[0, 0], [2, 1]],
+      shuffles: 7
+    },
+
+    /* L6 · 4×4 — an outer ring with a little courtyard inside. shuffles 8.
+       col→    0      1      2      3
+       row 0  ☀ES    ESW    EW    🏮SW
+       row 1   NS     NE     SW     NS
+       row 2   NS    🏮E     NW     NS
+       row 3  🏮NE    EW     EW     NW
+       Ring around the edge; bridge at (1,0)→(1,1); inner chain
+       (1,1)→(2,1)→(2,2)→(1,2)🏮. */
+    {
+      cols: 4, rows: 4,
+      grid: [
+        { c: 'ES', kind: 'source' }, { c: 'ESW', kind: 'wire' }, { c: 'EW', kind: 'wire' }, { c: 'SW', kind: 'lamp' },
+        { c: 'NS', kind: 'wire' }, { c: 'NE', kind: 'wire' }, { c: 'SW', kind: 'wire' }, { c: 'NS', kind: 'wire' },
+        { c: 'NS', kind: 'wire' }, { c: 'E', kind: 'lamp' }, { c: 'NW', kind: 'wire' }, { c: 'NS', kind: 'wire' },
+        { c: 'NE', kind: 'lamp' }, { c: 'EW', kind: 'wire' }, { c: 'EW', kind: 'wire' }, { c: 'NW', kind: 'wire' }
+      ],
+      locked: [[0, 0], [2, 2]],
+      shuffles: 8
+    },
+
+    /* L7 · 5×4 with four corner holes — sun in the sky, two loops below. shuffles 9.
+       col→    0      1      2      3      4
+       row 0   ·     🏮E     ESW   🏮W     ·
+       row 1   ES     EW    ☀NESW   EW     SW
+       row 2  🏮NE    SW     NS     ES    🏮NW
+       row 3   ·      NE     NEW    NW     ·    */
+    {
+      cols: 5, rows: 4,
+      grid: [
+        null, { c: 'E', kind: 'lamp' }, { c: 'ESW', kind: 'wire' }, { c: 'W', kind: 'lamp' }, null,
+        { c: 'ES', kind: 'wire' }, { c: 'EW', kind: 'wire' }, { c: 'NESW', kind: 'source' }, { c: 'EW', kind: 'wire' }, { c: 'SW', kind: 'wire' },
+        { c: 'NE', kind: 'lamp' }, { c: 'SW', kind: 'wire' }, { c: 'NS', kind: 'wire' }, { c: 'ES', kind: 'wire' }, { c: 'NW', kind: 'lamp' },
+        null, { c: 'NE', kind: 'wire' }, { c: 'NEW', kind: 'wire' }, { c: 'NW', kind: 'wire' }, null
+      ],
+      locked: [[2, 1], [2, 3]],
+      shuffles: 9
+    },
+
+    /* L8 · 5×5 with four corner holes — the lantern festival: a ring
+       around the sun, six lanterns all around. shuffles 10.
+       col→    0      1      2      3      4
+       row 0   ·     🏮ES    EW    🏮SW    ·
+       row 1  🏮S     NES    ESW    NSW   🏮S
+       row 2   NS     NES   ☀NESW   NSW    NS
+       row 3   NE     NEW    NESW   NEW    NW
+       row 4   ·     🏮E     NEW   🏮W     ·    */
+    {
+      cols: 5, rows: 5,
+      grid: [
+        null, { c: 'ES', kind: 'lamp' }, { c: 'EW', kind: 'wire' }, { c: 'SW', kind: 'lamp' }, null,
+        { c: 'S', kind: 'lamp' }, { c: 'NES', kind: 'wire' }, { c: 'ESW', kind: 'wire' }, { c: 'NSW', kind: 'wire' }, { c: 'S', kind: 'lamp' },
+        { c: 'NS', kind: 'wire' }, { c: 'NES', kind: 'wire' }, { c: 'NESW', kind: 'source' }, { c: 'NSW', kind: 'wire' }, { c: 'NS', kind: 'wire' },
+        { c: 'NE', kind: 'wire' }, { c: 'NEW', kind: 'wire' }, { c: 'NESW', kind: 'wire' }, { c: 'NEW', kind: 'wire' }, { c: 'NW', kind: 'wire' },
+        null, { c: 'E', kind: 'lamp' }, { c: 'NEW', kind: 'wire' }, { c: 'W', kind: 'lamp' }, null
+      ],
+      locked: [[2, 2], [2, 0], [2, 4]],
+      shuffles: 10
+    }
+  ];
+
+  /* ============================================================
+     Game
+     ============================================================ */
+  function start(board, levelDef, api) {
+    injectCss();
+
+    var level = JSON.parse(JSON.stringify(levelDef)); // never mutate registry data
+    var cols = level.cols;
+    var rows = level.rows;
+
+    var total = 0;
+    var solvedTiles = level.grid.map(function (cell) {
+      if (!cell) return null;
+      total++;
+      return { c: cell.c, kind: cell.kind };
+    });
+
+    var lockedSet = {};
+    (level.locked || []).forEach(function (p) {
+      lockedSet[p[1] * cols + p[0]] = true;    // p = [col, row]
+    });
+
+    var tiles = [];       // current arrangement (same holes as solvedTiles)
+    var cellEls = [];     // <button> per index, null for holes
+    var sel = -1;         // lifted slab index, -1 = none
+    var busy = false;     // true while a swap animates
+    var solvedFlag = false;
+    var history = [];     // stack of [i, j] swaps for Undo
+    var prevLit = {};     // lamp indices lit at last paint (for pop-on-light)
+    var maxPowered = 0;
+    var quietSwaps = 0;   // swaps since the golden line last grew
+    var saidStuck = false;
+    var saidClose = false;
+    var saidAllLit = false;
+    var timeouts = [];
+
+    function later(fn, ms) {
+      var id = setTimeout(fn, ms);
+      timeouts.push(id);
+      return id;
+    }
+
+    /* ---------- solved / power analysis ---------- */
+    function analyse() {
+      var matched = true;
+      var srcIdx = -1;
+      var i, x, y, d, dn, nx, ny, nt;
+
+      for (i = 0; i < tiles.length; i++) {
+        if (!tiles[i]) continue;
+        if (tiles[i].kind === 'source') srcIdx = i;
+        x = i % cols; y = (i - x) / cols;
+        for (d = 0; d < 4; d++) {
+          dn = DIRS[d];
+          if (tiles[i].c.indexOf(dn) === -1) continue;
+          nx = x + DIR[dn].dx; ny = y + DIR[dn].dy;
+          nt = (nx >= 0 && nx < cols && ny >= 0 && ny < rows) ? tiles[ny * cols + nx] : null;
+          if (!nt || nt.c.indexOf(DIR[dn].opp) === -1) matched = false;
+        }
+      }
+
+      var powered = {};
+      if (srcIdx >= 0) {
+        var stack = [srcIdx];
+        powered[srcIdx] = true;
+        while (stack.length) {
+          var cur = stack.pop();
+          var cx = cur % cols, cy = (cur - cx) / cols;
+          for (d = 0; d < 4; d++) {
+            dn = DIRS[d];
+            if (tiles[cur].c.indexOf(dn) === -1) continue;
+            nx = cx + DIR[dn].dx; ny = cy + DIR[dn].dy;
+            if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+            var ni = ny * cols + nx;
+            nt = tiles[ni];
+            if (!nt || powered[ni]) continue;
+            if (nt.c.indexOf(DIR[dn].opp) === -1) continue;   // both sides must open
+            powered[ni] = true;
+            stack.push(ni);
+          }
+        }
+      }
+
+      var poweredCount = 0, lit = 0, lamps = 0;
+      for (i = 0; i < tiles.length; i++) {
+        if (!tiles[i]) continue;
+        if (powered[i]) poweredCount++;
+        if (tiles[i].kind === 'lamp') {
+          lamps++;
+          if (powered[i]) lit++;
+        }
+      }
+      return {
+        matched: matched,
+        powered: powered,
+        poweredCount: poweredCount,
+        lit: lit,
+        lamps: lamps,
+        solved: matched && poweredCount === total
+      };
+    }
+
+    /* ---------- scramble (never leaves the board solved) ---------- */
+    function scramble() {
+      var unlocked = [];
+      var i;
+      for (i = 0; i < solvedTiles.length; i++) {
+        if (solvedTiles[i] && !lockedSet[i]) unlocked.push(i);
+      }
+      var attempts = 0;
+      do {
+        tiles = solvedTiles.map(function (t) { return t ? { c: t.c, kind: t.kind } : null; });
+        var swapsLeft = level.shuffles;
+        var guard = 0;
+        while (swapsLeft > 0 && guard < 400) {
+          guard++;
+          var a = unlocked[(Math.random() * unlocked.length) | 0];
+          var b = unlocked[(Math.random() * unlocked.length) | 0];
+          if (a === b) continue;
+          // only "effective" swaps: identical slabs trading places changes nothing
+          if (tiles[a].c === tiles[b].c && tiles[a].kind === tiles[b].kind) continue;
+          var tmp = tiles[a]; tiles[a] = tiles[b]; tiles[b] = tmp;
+          swapsLeft--;
+        }
+        attempts++;
+      } while (analyse().solved && attempts < 30);
+    }
+
+    /* ---------- rendering ---------- */
+    function svgFor(tile, on) {
+      var s = '<svg class="pi-wire' + (on ? ' pi-on' : '') + '" viewBox="0 0 100 100" aria-hidden="true">';
+      for (var d = 0; d < 4; d++) {
+        var dn = DIRS[d];
+        if (tile.c.indexOf(dn) === -1) continue;
+        s += '<path d="M50 50 L' + DIR[dn].x2 + ' ' + DIR[dn].y2 + '"/>';
+      }
+      s += '<circle cx="50" cy="50" r="13"/></svg>';
+      return s;
+    }
+
+    function label(tile, idx, on) {
+      var x = idx % cols, y = (idx - x) / cols;
+      var what = tile.kind === 'source' ? App.t('pipes.aria.source')
+        : tile.kind === 'lamp' ? (on ? App.t('pipes.aria.lampLit') : App.t('pipes.aria.lampDim'))
+          : App.t('pipes.aria.wire');
+      var s = what + App.t('pipes.aria.pos', { r: y + 1, c: x + 1 });
+      if (lockedSet[idx]) s += App.t('pipes.aria.moss');
+      if (sel === idx) s += App.t('pipes.aria.lifted');
+      return s;
+    }
+
+    function buildBoard() {
+      board.className = 'pi-board';
+      board.innerHTML = '';
+      board.setAttribute('aria-label', App.t('pipes.aria.board'));
+      board.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      board.style.maxWidth = Math.min(470, cols * 105) + 'px';
+      cellEls = [];
+      for (var i = 0; i < tiles.length; i++) {
+        if (!tiles[i]) {
+          var hole = document.createElement('div');
+          hole.className = 'pi-hole';
+          board.appendChild(hole);
+          cellEls.push(null);
+          continue;
+        }
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pi-cell';
+        (function (idx) {
+          btn.addEventListener('click', function () { onTap(idx); });
+          attachDrag(btn, idx);
+        })(i);
+        var slab = document.createElement('div');
+        slab.className = 'pi-slab';
+        btn.appendChild(slab);
+        board.appendChild(btn);
+        cellEls.push(btn);
+      }
+    }
+
+    function paint(f) {
+      if (!f) f = analyse();
+      var newLit = {};
+      for (var i = 0; i < tiles.length; i++) {
+        if (!cellEls[i]) continue;
+        var tile = tiles[i];
+        var on = !!f.powered[i];
+        var slab = cellEls[i].firstChild;
+
+        var cls = 'pi-slab';
+        if (on) cls += ' pi-powered';
+        if (lockedSet[i]) cls += ' pi-locked';
+        if (sel === i) cls += ' pi-lifted';
+        slab.className = cls;
+
+        var html = svgFor(tile, on);
+        if (tile.kind === 'source') {
+          html += '<span class="pi-iconwrap"><span class="pi-icon pi-sun">☀️</span></span>';
+        } else if (tile.kind === 'lamp') {
+          var justLit = on && !prevLit[i];
+          html += '<span class="pi-iconwrap"><span class="pi-icon ' +
+            (on ? 'pi-lamp-lit' : 'pi-lamp-dim') + (justLit ? ' pi-pop' : '') +
+            '">🏮</span></span>';
+          if (on) newLit[i] = true;
+        }
+        if (lockedSet[i]) html += '<span class="pi-moss">🌿</span>';
+        slab.innerHTML = html;
+
+        cellEls[i].setAttribute('aria-pressed', sel === i ? 'true' : 'false');
+        cellEls[i].setAttribute('aria-label', label(tile, i, on));
+      }
+      prevLit = newLit;
+    }
+
+    /* ---------- interaction ---------- */
+    function shake(idx) {
+      var slab = cellEls[idx].firstChild;
+      slab.classList.remove('pg-shake');
+      void slab.offsetWidth;                       // restart the animation
+      slab.classList.add('pg-shake');
+      later(function () { slab.classList.remove('pg-shake'); }, 420);
+    }
+
+    /* ---------- drag a slab onto another to swap ---------- */
+    var suppressClick = false;
+
+    function attachDrag(btn, idx) {
+      btn.addEventListener('pointerdown', function (e) {
+        suppressClick = false;                       /* a fresh interaction begins */
+        if (solvedFlag || busy || lockedSet[idx]) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        var slab = btn.firstChild;
+        var sx = e.clientX, sy = e.clientY;
+        var dragging = false;
+
+        function settle() {
+          slab.style.transition = 'none';
+          slab.style.transform = '';
+          slab.style.zIndex = '';
+          slab.style.pointerEvents = '';
+          void slab.offsetWidth;
+          slab.style.transition = '';
+        }
+
+        function onMove(ev) {
+          var dx = ev.clientX - sx, dy = ev.clientY - sy;
+          if (!dragging) {
+            if (dx * dx + dy * dy < 64) return;      /* ~8px before it counts as a drag */
+            dragging = true;
+            suppressClick = true;
+            if (sel !== -1) { sel = -1; paint(); }
+            btn.classList.add('pi-drag');
+            slab.style.transition = 'none';
+            slab.style.zIndex = '8';
+            slab.style.pointerEvents = 'none';
+            api.sound.tap();
+          }
+          slab.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.06)';
+          if (ev.cancelable) ev.preventDefault();
+        }
+
+        function onUp(ev) {
+          btn.removeEventListener('pointermove', onMove);
+          btn.removeEventListener('pointerup', onUp);
+          btn.removeEventListener('pointercancel', onUp);
+          if (!dragging) return;                     /* plain tap → the click handler takes it */
+          btn.classList.remove('pi-drag');           /* suppressClick stays set until the click
+                                                        it suppresses (or the next pointerdown) */
+
+          var target = -1;
+          var under = document.elementFromPoint(ev.clientX, ev.clientY);
+          while (under && under !== board && !(under.classList && under.classList.contains('pi-cell'))) {
+            under = under.parentElement;
+          }
+          if (under && under !== board) target = cellEls.indexOf(under);
+
+          if (target >= 0 && target !== idx && !lockedSet[target] && !busy && !solvedFlag) {
+            settle();
+            swapCells(idx, target, true);
+          } else if (target >= 0 && target !== idx && lockedSet[target]) {
+            settle();
+            api.sound.bad();
+            shake(target);
+            api.say(pick(MOSS_MSGS()));
+          } else {
+            slab.style.transition = 'transform 0.18s ease';   /* glide home */
+            slab.style.transform = '';
+            later(settle, 200);
+          }
+        }
+
+        try { btn.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
+        btn.addEventListener('pointermove', onMove);
+        btn.addEventListener('pointerup', onUp);
+        btn.addEventListener('pointercancel', onUp);
+      });
+    }
+
+    function onTap(idx) {
+      if (suppressClick) { suppressClick = false; return; }
+      if (solvedFlag || busy) return;
+      if (lockedSet[idx]) {
+        api.sound.bad();
+        shake(idx);
+        api.say(pick(MOSS_MSGS()));
+        return;
+      }
+      if (sel === -1) { sel = idx; api.sound.tap(); paint(); return; }
+      if (sel === idx) { sel = -1; api.sound.tap(); paint(); return; }
+      swapCells(sel, idx, true);
+    }
+
+    function swapCells(i, j, record) {
+      busy = true;
+      var before = analyse();
+      api.sound.slide();
+
+      // FLIP: glide each slab to the other's spot, then swap the data
+      var a = cellEls[i].firstChild;
+      var b = cellEls[j].firstChild;
+      var ra = cellEls[i].getBoundingClientRect();
+      var rb = cellEls[j].getBoundingClientRect();
+      a.style.zIndex = '6'; b.style.zIndex = '5';
+      a.style.transition = 'transform 0.18s ease';
+      b.style.transition = 'transform 0.18s ease';
+      a.style.transform = 'translate(' + (rb.left - ra.left) + 'px,' + (rb.top - ra.top) + 'px)';
+      b.style.transform = 'translate(' + (ra.left - rb.left) + 'px,' + (ra.top - rb.top) + 'px)';
+
+      later(function () {
+        a.style.transition = 'none'; b.style.transition = 'none';
+        a.style.transform = ''; b.style.transform = '';
+        a.style.zIndex = ''; b.style.zIndex = '';
+
+        var tmp = tiles[i]; tiles[i] = tiles[j]; tiles[j] = tmp;
+        if (record) history.push([i, j]);
+        sel = -1;
+        busy = false;
+
+        var f = analyse();
+        paint(f);
+
+        void a.offsetWidth;                        // flush, then restore transitions
+        a.style.transition = ''; b.style.transition = '';
+
+        afterMove(before, f);
+      }, 200);
+    }
+
+    function afterMove(before, f) {
+      if (f.lit > before.lit) api.sound.good();
+
+      if (f.solved) { celebrate(f); return; }
+
+      if (f.poweredCount > maxPowered) { maxPowered = f.poweredCount; quietSwaps = 0; }
+      else quietSwaps++;
+
+      if (!saidAllLit && f.lamps > 1 && f.lit === f.lamps) {
+        saidAllLit = true;
+        api.say(App.t('pipes.msg.allLit'));
+      } else if (!saidClose && total - f.poweredCount <= 2 && f.poweredCount < total) {
+        saidClose = true;
+        api.say(App.t('pipes.msg.close'));
+      } else if (!saidStuck && quietSwaps >= 8) {
+        saidStuck = true;
+        api.say(App.t('pipes.msg.stuck'));
+      }
+    }
+
+    function celebrate(f) {
+      solvedFlag = true;
+      sel = -1;
+      paint(f);
+      board.classList.add('pi-won');
+      api.sound.good();
+      later(function () { api.win(); }, 550);
+    }
+
+    function undo() {
+      if (solvedFlag || busy) return;
+      if (sel !== -1) { sel = -1; paint(); }
+      if (!history.length) {
+        api.sound.tap();
+        api.say(App.t('pipes.msg.undoEmpty'));
+        return;
+      }
+      var m = history.pop();
+      swapCells(m[0], m[1], false);                // swapping back = undo
+    }
+
+    function restart() {
+      if (solvedFlag || busy) return;
+      api.sound.tap();
+      sel = -1;
+      history = [];
+      prevLit = {};
+      quietSwaps = 0;
+      scramble();
+      var f = analyse();
+      maxPowered = f.poweredCount;
+      paint(f);
+      api.say(pick(RESTART_MSGS()));
+    }
+
+    /* ---------- go ---------- */
+    scramble();
+    buildBoard();
+    var f0 = analyse();
+    maxPowered = f0.poweredCount;
+    paint(f0);
+
+    if (api.levelIndex === 0) {
+      api.say(App.t('pipes.msg.teach'));
+    } else if (api.levelIndex === api.levelCount - 1) {
+      api.say(App.t('pipes.msg.finale'));
+    }
+
+    api.button(App.t('ui.undo'), undo);
+    api.button(App.t('ui.restart'), restart);
+
+    return function cleanup() {
+      timeouts.forEach(clearTimeout);
+    };
+  }
+
+  App.registerGame({
+    id: 'pipes',
+    get title() { return App.t('pipes.title'); },
+    emoji: '🏮',
+    accent: 'var(--butter)',
+    get tagline() { return App.t('pipes.tagline'); },
+    get howTo() { return App.t('pipes.howTo'); },
+    levels: LEVELS,
+    start: start
+  });
+})();
+
+
+/* ================================================== */
+
+/* ============================================================
+   Puzzle Garden — Cozy Crates 📦
+   Tiny, kind Sokoban: walk the cat, nudge each crate onto a
+   flower spot. Tap-only playable (big D-pad), plus arrow keys,
+   swipes on the board, and tap-to-walk. Undo and Start over
+   are always one tap away. No timers, no fail states.
+
+   Level data: standard Sokoban ASCII (see DESIGN.md).
+   Every level below was machine-verified: the `solution`
+   string (URDL, pushes included) replays to a win, and a BFS
+   solver confirmed solvability. All levels ≤ 11 pushes.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* ----------------------------------------------------------
+     Levels. Coordinates in comments are [col,row], 0-based.
+     ---------------------------------------------------------- */
+  var LEVELS = [
+
+    /* 1 — One crate, one straight push to the right.
+       #####      cat [1,1], crate [2,1], spot [3,1]
+       #@$.#      1 push. Impossible to get stuck.
+       ##### */
+    {
+      map: [
+        '#####',
+        '#@$.#',
+        '#####'
+      ],
+      solution: 'R'
+    },
+
+    /* 2 — A little garden lane: two pushes down a corridor.
+       ###        cat [1,1], crate [1,2], spot [1,4]
+       #@#        The corridor means no wrong turns exist.
+       #$#
+       # #
+       #.#
+       ### */
+    {
+      map: [
+        '###',
+        '#@#',
+        '#$#',
+        '# #',
+        '#.#',
+        '###'
+      ],
+      solution: 'DD'
+    },
+
+    /* 3 — Two crates, each one gentle push to the right.
+       ######     cat [1,1]
+       #@   #     crates [2,2],[2,3]  spots [3,2],[3,3]
+       # $. #     Teaches: walk beside a crate to line up.
+       # $. #
+       #    #
+       ###### */
+    {
+      map: [
+        '######',
+        '#@   #',
+        '# $. #',
+        '# $. #',
+        '#    #',
+        '######'
+      ],
+      solution: 'DRLDR'
+    },
+
+    /* 4 — Walk all the way around, then push each crate down.
+       ######     cat [2,4]
+       #    #     crates [2,2],[3,2]  spots [2,3],[3,3]
+       # $$ #     Teaches: go the long way round to get behind.
+       # .. #
+       # @  #
+       ###### */
+    {
+      map: [
+        '######',
+        '#    #',
+        '# $$ #',
+        '# .. #',
+        '# @  #',
+        '######'
+      ],
+      solution: 'LUUURDURD'
+    },
+
+    /* 5 — One push up, then a double push right.
+       ######     cat [2,3]
+       #  . #     crates [2,2],[3,2]  spots [3,1],[4,2]
+       # $$.#     First level mixing directions.
+       # @  #
+       #    #
+       ###### */
+    {
+      map: [
+        '######',
+        '#  . #',
+        '# $$.#',
+        '# @  #',
+        '#    #',
+        '######'
+      ],
+      solution: 'RUDLLURR'
+    },
+
+    /* 6 — Three crates in a friendly rhythm: down, down, down.
+       #######    cat [3,4]
+       #     #    crates [2,2],[3,2],[4,2]
+       # $$$ #    spots  [2,3],[3,3],[4,3]
+       # ... #
+       #  @  #
+       ####### */
+    {
+      map: [
+        '#######',
+        '#     #',
+        '# $$$ #',
+        '# ... #',
+        '#  @  #',
+        '#######'
+      ],
+      solution: 'LLUUURDURDURD'
+    },
+
+    /* 7 — Two crates, each turning a corner up into its nook.
+       #######    cat [3,3]
+       #   ..#    crates [2,2],[4,2]  spots [4,1],[5,1]
+       # $ $ #    Right crate first, then walk back for the left.
+       #  @  #
+       #     #
+       ####### */
+    {
+      map: [
+        '#######',
+        '#   ..#',
+        '# $ $ #',
+        '#  @  #',
+        '#     #',
+        '#######'
+      ],
+      solution: 'URDRUDLLLLURRDRU'
+    },
+
+    /* 8 — The garden finale: three crates around a stone.
+       #######    cat [3,6], stone wall [3,3]
+       #..   #    crates [3,2],[2,3],[3,4]
+       #  $  #    spots  [1,1],[2,1],[4,5]
+       # $#  #    11 pushes; each crate turns a corner.
+       #  $  #
+       #   . #
+       #  @  #
+       ####### */
+    {
+      map: [
+        '#######',
+        '#..   #',
+        '#  $  #',
+        '# $#  #',
+        '#  $  #',
+        '#   . #',
+        '#  @  #',
+        '#######'
+      ],
+      solution: 'ULUUURURDDDLLDLUUU'
+    }
+  ];
+
+  /* ----------------------------------------------------------
+     Injected styles — all classes prefixed .cr-, tokens only.
+     ---------------------------------------------------------- */
+  var CSS_ID = 'crates-css';
+  var CSS = [
+    '.cr-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%;}',
+    '.cr-grid{display:grid;gap:0;width:100%;margin:0 auto;position:relative;',
+    '  touch-action:none;user-select:none;-webkit-user-select:none;}',
+    '.cr-cell{aspect-ratio:1;position:relative;border-radius:10px;}',
+    '.cr-grass{background:transparent;}',
+    '.cr-wall{background:color-mix(in srgb, var(--leaf) 52%, var(--card-soft));',
+    '  border:2px solid color-mix(in srgb, var(--leaf-deep) 22%, var(--card-soft));',
+    '  box-shadow:inset 0 -4px 0 color-mix(in srgb, var(--leaf-deep) 25%, transparent);}',
+    '.cr-floor{background:var(--card);border:2px solid var(--line);}',
+    '.cr-spotcell{background:radial-gradient(circle at 50% 46%,',
+    '  color-mix(in srgb, var(--butter) 42%, var(--card)), var(--card) 78%);',
+    '  border-color:color-mix(in srgb, var(--butter-deep) 30%, var(--line));}',
+    '.cr-flower{position:absolute;inset:0;display:grid;place-items:center;',
+    '  font-size:clamp(15px,4.5vw,26px);opacity:.85;',
+    '  animation:cr-breathe 2.8s ease-in-out infinite alternate;}',
+    '@keyframes cr-breathe{from{transform:scale(1);opacity:.7}to{transform:scale(1.12);opacity:1}}',
+    '.cr-actor{position:absolute;left:0;top:0;transition:transform .17s ease;',
+    '  pointer-events:none;z-index:2;}',
+    '.cr-cat{z-index:3;}',
+    '.cr-inner{width:100%;height:100%;display:grid;place-items:center;',
+    '  font-size:clamp(24px,7vw,40px);position:relative;line-height:1;}',
+    '.cr-hop{animation:cr-hop .2s ease;}',
+    '@keyframes cr-hop{50%{transform:translateY(-13%);}}',
+    '.cr-bloom{animation:cr-bloom .5s ease;}',
+    '@keyframes cr-bloom{0%{transform:scale(1)}45%{transform:scale(1.25)}100%{transform:scale(1)}}',
+    '.cr-badge{position:absolute;top:-2%;right:0;font-size:48%;',
+    '  transform:scale(0);transition:transform .3s ease;}',
+    '.cr-on .cr-badge{transform:scale(1);}',
+    '.cr-on .cr-inner{filter:drop-shadow(0 0 10px var(--glow)) drop-shadow(0 0 4px var(--butter));}',
+    '.cr-solved .cr-on .cr-inner{animation:cr-bloom .55s ease;}',
+    '.cr-dpad{display:grid;grid-template-columns:repeat(3,1fr);',
+    '  grid-template-rows:repeat(3,1fr);gap:10px;}',
+    '.cr-dbtn{min-width:64px;min-height:58px;font-size:1.35rem;padding:6px 10px;line-height:1;}',
+    '.cr-dmid{display:grid;place-items:center;font-size:1.15rem;opacity:.5;}'
+  ].join('\n');
+
+  function injectCss() {
+    if (document.getElementById(CSS_ID)) return;
+    var s = document.createElement('style');
+    s.id = CSS_ID;
+    s.textContent = CSS;
+    document.head.appendChild(s);
+  }
+
+  /* ---------------------------------------------------------- */
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+  function key(x, y) { return x + ',' + y; }
+
+  /* Parse ASCII map → fresh board data (level data never mutated).
+     open = walkable floor inside the walls; cells outside the
+     walls (reachable from the border) render as grass/empty.   */
+  function parseLevel(map) {
+    var rows = map.length, cols = 0, x, y;
+    for (y = 0; y < rows; y++) if (map[y].length > cols) cols = map[y].length;
+
+    var wall = {}, spot = {}, open = {}, crates = [], cat = null;
+    for (y = 0; y < rows; y++) {
+      for (x = 0; x < cols; x++) {
+        var ch = map[y].charAt(x) || ' ';
+        var k = key(x, y);
+        if (ch === '#') { wall[k] = true; continue; }
+        if (ch === '.' || ch === '*' || ch === '+') spot[k] = true;
+        if (ch === '$' || ch === '*') crates.push([x, y]);
+        if (ch === '@' || ch === '+') cat = [x, y];
+      }
+    }
+
+    /* flood-fill from the border over non-wall cells = outside */
+    var outside = {}, stack = [];
+    function seed(sx, sy) {
+      if (sx < 0 || sy < 0 || sx >= cols || sy >= rows) return;
+      var k = key(sx, sy);
+      if (wall[k] || outside[k]) return;
+      outside[k] = true;
+      stack.push([sx, sy]);
+    }
+    for (x = 0; x < cols; x++) { seed(x, 0); seed(x, rows - 1); }
+    for (y = 0; y < rows; y++) { seed(0, y); seed(cols - 1, y); }
+    while (stack.length) {
+      var c = stack.pop();
+      seed(c[0] + 1, c[1]); seed(c[0] - 1, c[1]);
+      seed(c[0], c[1] + 1); seed(c[0], c[1] - 1);
+    }
+    for (y = 0; y < rows; y++) {
+      for (x = 0; x < cols; x++) {
+        var kk = key(x, y);
+        if (!wall[kk] && !outside[kk]) open[kk] = true;
+      }
+    }
+    return { cols: cols, rows: rows, wall: wall, spot: spot, open: open,
+             outside: outside, crates: crates, cat: cat };
+  }
+
+  /* ----------------------------------------------------------
+     Game
+     ---------------------------------------------------------- */
+  function start(board, level, api) {
+    injectCss();
+
+    var p = parseLevel(level.map);
+    var init = {
+      cat: p.cat.slice(),
+      crates: p.crates.map(function (c) { return c.slice(); })
+    };
+
+    var cat = init.cat.slice();
+    var crates = init.crates.map(function (c) { return c.slice(); });
+    var history = [];
+    var finished = false;
+    var walkTimer = null;
+    var winTimer = null;
+    var teachTimer = null;
+    var badStreak = 0;
+    var hints = { stuck: false, corner: false, almost: false, tapCrate: false };
+
+    /* ---------- build DOM ---------- */
+    board.textContent = '';
+    var wrap = el('div', 'cr-wrap');
+    var grid = el('div', 'cr-grid');
+    grid.style.gridTemplateColumns = 'repeat(' + p.cols + ', 1fr)';
+    grid.style.maxWidth = Math.min(p.cols * 84, 470) + 'px';
+
+    var x, y;
+    for (y = 0; y < p.rows; y++) {
+      for (x = 0; x < p.cols; x++) {
+        var k = key(x, y);
+        var cls = 'cr-cell ';
+        if (p.wall[k]) cls += 'cr-wall';
+        else if (p.open[k]) cls += 'cr-floor' + (p.spot[k] ? ' cr-spotcell' : '');
+        else cls += 'cr-grass';
+        var cell = el('div', cls);
+        cell.setAttribute('data-x', String(x));
+        cell.setAttribute('data-y', String(y));
+        if (p.spot[k] && p.open[k]) {
+          var fl = el('span', 'cr-flower', '🌼');
+          fl.setAttribute('aria-hidden', 'true');
+          cell.appendChild(fl);
+        }
+        grid.appendChild(cell);
+      }
+    }
+
+    function makeActor(cls, face, label) {
+      var a = el('div', 'cr-actor ' + cls);
+      a.style.width = 'calc(100% / ' + p.cols + ')';
+      a.style.height = 'calc(100% / ' + p.rows + ')';
+      a.setAttribute('role', 'img');
+      a.setAttribute('aria-label', label);
+      var inner = el('span', 'cr-inner');
+      inner.appendChild(el('span', 'cr-face', face));
+      a.appendChild(inner);
+      grid.appendChild(a);
+      return { root: a, inner: inner };
+    }
+
+    var crateEls = crates.map(function () {
+      var a = makeActor('cr-crate', '📦', App.t('crates.aria.crate'));
+      a.inner.appendChild(el('span', 'cr-badge', '🌼'));
+      return a;
+    });
+    var catEl = makeActor('cr-cat', '🐱', App.t('crates.aria.cat'));
+
+    function place(actor, pos) {
+      actor.root.style.transform =
+        'translate(' + (pos[0] * 100) + '%, ' + (pos[1] * 100) + '%)';
+    }
+    function placeAll() {
+      place(catEl, cat);
+      for (var i = 0; i < crates.length; i++) place(crateEls[i], crates[i]);
+      refreshSpotGlow();
+    }
+    function refreshSpotGlow() {
+      for (var i = 0; i < crates.length; i++) {
+        var on = !!p.spot[key(crates[i][0], crates[i][1])];
+        crateEls[i].root.classList.toggle('cr-on', on);
+      }
+    }
+
+    /* No D-pad — the cat is driven by touch: tap a tile to walk there,
+       tap an adjacent crate (or swipe toward one) to push it. Arrow keys
+       still work as an invisible bonus on desktop. */
+    wrap.appendChild(grid);
+    board.appendChild(wrap);
+    placeAll();
+
+    /* ---------- helpers ---------- */
+    function crateAt(cx, cy) {
+      for (var i = 0; i < crates.length; i++) {
+        if (crates[i][0] === cx && crates[i][1] === cy) return i;
+      }
+      return -1;
+    }
+    function retrigger(elm, cls) {
+      elm.classList.remove(cls);
+      void elm.offsetWidth;
+      elm.classList.add(cls);
+    }
+    function shake(elm) {
+      retrigger(elm, 'pg-shake');
+      setTimeout(function () { elm.classList.remove('pg-shake'); }, 420);
+    }
+    function oops(elm) {
+      api.sound.bad();
+      shake(elm);
+      badStreak++;
+      if (badStreak >= 3 && !hints.stuck) {
+        hints.stuck = true;
+        api.say(App.t('crates.msg.stuck'));
+      }
+    }
+    function snapshot() {
+      history.push({
+        cat: cat.slice(),
+        crates: crates.map(function (c) { return c.slice(); })
+      });
+    }
+    function stopWalk() {
+      if (walkTimer !== null) { clearInterval(walkTimer); walkTimer = null; }
+    }
+    function inCorner(cx, cy) {
+      var w = p.wall;
+      var lr = w[key(cx - 1, cy)] || w[key(cx + 1, cy)];
+      var ud = w[key(cx, cy - 1)] || w[key(cx, cy + 1)];
+      return !!(lr && ud);
+    }
+    function countOnSpots() {
+      var n = 0;
+      for (var i = 0; i < crates.length; i++) {
+        if (p.spot[key(crates[i][0], crates[i][1])]) n++;
+      }
+      return n;
+    }
+    function checkWin() {
+      if (finished) return;
+      if (countOnSpots() !== crates.length) return;
+      finished = true;
+      stopWalk();
+      grid.classList.add('cr-solved');
+      retrigger(catEl.inner, 'cr-hop');
+      winTimer = setTimeout(function () { api.win(); }, 500);
+    }
+
+    /* ---------- moving ---------- */
+    function move(dx, dy) {
+      if (finished) return;
+      stopWalk();
+      var nx = cat[0] + dx, ny = cat[1] + dy;
+      var nk = key(nx, ny);
+
+      if (!p.open[nk]) { oops(catEl.inner); return; }
+
+      var ci = crateAt(nx, ny);
+      if (ci >= 0) {
+        var bx = nx + dx, by = ny + dy;
+        var bk = key(bx, by);
+        if (!p.open[bk] || crateAt(bx, by) >= 0) { oops(crateEls[ci].inner); return; }
+
+        snapshot();
+        badStreak = 0;
+        crates[ci][0] = bx; crates[ci][1] = by;
+        cat[0] = nx; cat[1] = ny;
+        place(crateEls[ci], crates[ci]);
+        place(catEl, cat);
+        retrigger(catEl.inner, 'cr-hop');
+        refreshSpotGlow();
+
+        if (p.spot[bk]) {
+          api.sound.good();
+          retrigger(crateEls[ci].inner, 'cr-bloom');
+          var on = countOnSpots();
+          if (on < crates.length && crates.length >= 2 &&
+              on === crates.length - 1 && !hints.almost) {
+            hints.almost = true;
+            api.say(App.t('crates.msg.oneLeft'));
+          }
+        } else {
+          api.sound.place();
+          if (!hints.corner && inCorner(bx, by)) {
+            hints.corner = true;
+            api.say(App.t('crates.msg.corner'));
+          }
+        }
+        checkWin();
+      } else {
+        snapshot();
+        badStreak = 0;
+        cat[0] = nx; cat[1] = ny;
+        place(catEl, cat);
+        retrigger(catEl.inner, 'cr-hop');
+        api.sound.tap();
+      }
+    }
+
+    /* ---------- tap-to-walk ---------- */
+    function findPath(tx, ty) {
+      var target = key(tx, ty);
+      if (!p.open[target]) return null;
+      var blocked = {};
+      for (var i = 0; i < crates.length; i++) blocked[key(crates[i][0], crates[i][1])] = true;
+      if (blocked[target]) return null;
+
+      var startK = key(cat[0], cat[1]);
+      var prev = {};
+      prev[startK] = null;
+      var q = [[cat[0], cat[1]]], head = 0;
+      var D = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      while (head < q.length) {
+        var c = q[head++];
+        var ck = key(c[0], c[1]);
+        if (ck === target) {
+          var path = [], cur = ck;
+          while (cur !== startK) {
+            var parts = cur.split(',');
+            path.unshift([parseInt(parts[0], 10), parseInt(parts[1], 10)]);
+            cur = prev[cur];
+          }
+          return path;
+        }
+        for (var d = 0; d < 4; d++) {
+          var nx = c[0] + D[d][0], ny = c[1] + D[d][1];
+          var nk = key(nx, ny);
+          if (!p.open[nk] || blocked[nk] || (nk in prev)) continue;
+          prev[nk] = ck;
+          q.push([nx, ny]);
+        }
+      }
+      return null;
+    }
+
+    function walkStep(pos) {
+      snapshot();
+      badStreak = 0;
+      cat[0] = pos[0]; cat[1] = pos[1];
+      place(catEl, cat);
+      retrigger(catEl.inner, 'cr-hop');
+      api.sound.tap();
+    }
+    function startWalk(path) {
+      stopWalk();
+      if (!path.length) return;
+      walkStep(path[0]);
+      var i = 1;
+      if (i >= path.length) return;
+      walkTimer = setInterval(function () {
+        if (finished || i >= path.length) { stopWalk(); return; }
+        walkStep(path[i]);
+        i++;
+        if (i >= path.length) stopWalk();
+      }, 150);
+    }
+
+    function onTap(cellEl) {
+      if (finished || !cellEl) return;
+      var tx = parseInt(cellEl.getAttribute('data-x'), 10);
+      var ty = parseInt(cellEl.getAttribute('data-y'), 10);
+      var tk = key(tx, ty);
+      if (!p.open[tk]) return; /* wall or grass: quiet */
+
+      var ci = crateAt(tx, ty);
+      if (ci >= 0) {
+        var dx = tx - cat[0], dy = ty - cat[1];
+        if (Math.abs(dx) + Math.abs(dy) === 1) {
+          move(dx, dy); /* tapping a crate beside the cat pushes it */
+        } else {
+          api.sound.tap();
+          if (!hints.tapCrate) {
+            hints.tapCrate = true;
+            api.say(App.t('crates.msg.pushHint'));
+          }
+        }
+        return;
+      }
+      if (tx === cat[0] && ty === cat[1]) {
+        retrigger(catEl.inner, 'cr-hop');
+        api.sound.tap();
+        return;
+      }
+      var path = findPath(tx, ty);
+      if (path) startWalk(path);
+      else oops(cellEl);
+    }
+
+    /* ---------- swipe / tap on the board ---------- */
+    var press = null;
+    grid.addEventListener('pointerdown', function (e) {
+      if (finished) return;
+      press = {
+        id: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        cell: e.target && e.target.closest ? e.target.closest('.cr-cell') : null
+      };
+      try { grid.setPointerCapture(e.pointerId); } catch (err) { /* fine without */ }
+    });
+    grid.addEventListener('pointerup', function (e) {
+      if (!press || e.pointerId !== press.id) return;
+      var dx = e.clientX - press.x;
+      var dy = e.clientY - press.y;
+      var cell = press.cell;
+      press = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) >= 30) {
+        if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1, 0);
+        else move(0, dy > 0 ? 1 : -1);
+      } else {
+        onTap(cell);
+      }
+    });
+    grid.addEventListener('pointercancel', function () { press = null; });
+
+    /* ---------- keyboard ---------- */
+    var KEYS = {
+      ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0]
+    };
+    function onKey(e) {
+      var d = KEYS[e.key];
+      if (!d) return;
+      e.preventDefault();
+      move(d[0], d[1]);
+    }
+    document.addEventListener('keydown', onKey);
+
+    /* ---------- toolbar ---------- */
+    api.button(App.t('ui.undo'), function () {
+      if (finished) return;
+      stopWalk();
+      if (!history.length) {
+        api.sound.tap();
+        api.say(App.t('crates.msg.undoEmpty'));
+        return;
+      }
+      var s = history.pop();
+      cat = s.cat;
+      crates = s.crates;
+      badStreak = 0;
+      placeAll();
+      api.sound.slide();
+    });
+    api.button(App.t('ui.restart'), function () {
+      if (finished) return;
+      stopWalk();
+      cat = init.cat.slice();
+      crates = init.crates.map(function (c) { return c.slice(); });
+      history = [];
+      badStreak = 0;
+      placeAll();
+      api.sound.slide();
+      api.say(App.t('crates.msg.fresh'));
+    });
+
+    /* ---------- a little warm welcome on the very first level ---------- */
+    if (api.levelIndex === 0) {
+      teachTimer = setTimeout(function () {
+        api.say(App.t('crates.msg.teach'));
+      }, 900);
+    }
+
+    /* ---------- cleanup ---------- */
+    return function cleanup() {
+      stopWalk();
+      if (winTimer !== null) clearTimeout(winTimer);
+      if (teachTimer !== null) clearTimeout(teachTimer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }
+
+  App.registerGame({
+    id: 'crates',
+    get title() { return App.t('crates.title'); },
+    emoji: '📦',
+    accent: 'var(--leaf)',
+    get tagline() { return App.t('crates.tagline'); },
+    get howTo() { return App.t('crates.howTo'); },
+    levels: LEVELS,
+    start: start
+  });
+})();
+
+if (document.readyState !== 'loading') {
+  document.dispatchEvent(new Event('DOMContentLoaded'));
+}
+</script>
